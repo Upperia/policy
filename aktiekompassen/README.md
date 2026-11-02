@@ -2,9 +2,10 @@
 
 Webbapp för den egna aktieportföljen: nyckeltal per aktie, köp- och säljregler med vikt, och en kompass som visar beslutsläget. All portföljdata sparas lokalt i mobilen (webbläsarens lagring). Kurser och nyckeltal hämtas automatiskt från Yahoo Finance via en liten serverfunktion.
 
-- App: https://pxskckkdftnknqcgpbng.supabase.co/functions/v1/aktiekompassen/ (lägg till på hemskärmen så blir den en app)
-- `public/` – appen (index.html, manifest, service worker, ikoner). Serveras av funktionen direkt från den här mappen på GitHub, så en push hit räcker för att uppdatera appen.
-- `function/` – Supabase Edge Function `aktiekompassen` (Deno). `lib.ts` pratar med Yahoo Finance, `index.ts` sköter routing och serverar filerna i `public/`. Deployas med Supabase MCP/CLI; behöver bara deployas om när funktionen ändras, inte när appen ändras.
+- App: https://upperia.github.io/policy/aktiekompassen/ (GitHub Pages – lägg till på hemskärmen så blir den en app). En push till `main` uppdaterar appen inom någon minut.
+- Filerna i den här mappen är appen: `index.html`, `manifest.webmanifest`, `sw.js` (service worker för offline), ikoner.
+- `function/` – Supabase Edge Function `aktiekompassen` (projekt Answer-to-question, Deno). `lib.ts` pratar med Yahoo Finance, `index.ts` sköter API-routing. Deployas med Supabase MCP/CLI; behöver bara deployas om när funktionen ändras.
+- API-bas: https://pxskckkdftnknqcgpbng.supabase.co/functions/v1/aktiekompassen/api (CORS öppet, så appen kan ligga var som helst – även öppnas lokalt).
 
 ## API
 - `GET /api/sok?q=investor` → `[{ symbol, namn, bors, typ }]` (Stockholm först)
