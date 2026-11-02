@@ -435,7 +435,7 @@ function fmtSigned(n, dec) { if (!isNum(n)) return '–'; return (n > 0 ? '+' : 
 function fmtPct(n, dec, sign) { if (!isNum(n)) return '–'; return (sign ? fmtSigned(n, dec) : fmt(n, dec)) + ' %'; }
 function fmtVal(v, def) { if (!isNum(v)) return '–'; const d = def || { enhet: '', dec: 1 }; const s = fmt(v, d.dec); return d.enhet === 'x' || !d.enhet ? s : s + ' ' + d.enhet; }
 function fmtBig(n) { if (!isNum(n)) return '–'; if (Math.abs(n) >= 1e9) return fmt(n / 1e9, 1) + ' mdkr'; if (Math.abs(n) >= 1e6) return fmt(n / 1e6, 0) + ' mkr'; return fmt(n, 0); }
-function inputVal(n, dec) { if (!isNum(n)) return ''; const p = Math.pow(10, dec == null ? 2 : dec); return String(Math.round(n * p) / p).replace('.', ','); }
+function inputVal(n, dec, fixed) { if (!isNum(n)) return ''; const d = dec == null ? 2 : dec, p = Math.pow(10, d); const r = Math.round(n * p) / p; return (fixed ? r.toFixed(d) : String(r)).replace('.', ','); }
 function fmtDate(iso) { if (!iso) return '–'; const d = new Date(iso.length > 10 ? iso : iso + 'T00:00:00'); if (isNaN(d)) return iso; return d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }); }
 function fmtTime(iso) { if (!iso) return '–'; const d = new Date(iso); if (isNaN(d)) return iso; const today = d.toDateString() === new Date().toDateString(); return (today ? 'idag ' : fmtDate(iso) + ' ') + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }); }
 function daysSince(iso) { if (!iso) return null; const d = new Date(iso.length > 10 ? iso : iso + 'T00:00:00'); if (isNaN(d)) return null; return Math.floor((Date.now() - d.getTime()) / 86400000); }
@@ -796,7 +796,7 @@ function renderDetail() {
       '<div class="actions"><button class="btn" data-action="edit-stock">Redigera</button><button class="btn primary" data-action="trade">Köp / Sälj</button></div></div>' +
     '<section class="card d-price">' +
       '<div class="price-main"><label class="tile-label" for="kurs-input">Kurs</label>' +
-        '<div class="price-input"><input id="kurs-input" class="num" inputmode="decimal" autocomplete="off" data-field="kurs" value="' + inputVal(s.kurs, 2) + '" placeholder="0,00"><span class="muted">' + esc(cur) + '</span>' + (isNum(s.forandring) ? '<span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 2) + ' %</span>' : '') + '</div>' +
+        '<div class="price-input"><input id="kurs-input" class="num" inputmode="decimal" autocomplete="off" data-field="kurs" value="' + inputVal(s.kurs, 2, true) + '" placeholder="0,00"><span class="muted">' + esc(cur) + '</span>' + (isNum(s.forandring) ? '<span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 2) + ' %</span>' : '') + '</div>' +
         '<div class="hint">' + fetchLine + '</div></div>' +
       '<dl class="facts num">' +
         '<div><dt>Antal</dt><dd>' + (owned ? fmt(s.antal, 0) + ' st' : 'Äger inte') + '</dd></div>' +
