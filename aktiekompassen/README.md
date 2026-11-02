@@ -24,3 +24,6 @@ stocks:   [{ id, ticker, symbol, namn, lista, valuta, fxSek, antal, gav, kurs, k
              varden: { <metricId>: number }, las: { <metricId>: true }, regler: [...], anteckning, transaktioner: [...], exempel, updatedAt }]
 ```
 Säkerhetskopia (JSON) går att ta och läsa in under Regler → Data.
+
+## Läs in innehav via länk
+`https://upperia.github.io/policy/aktiekompassen/?innehav=SYMBOL:ANTAL:GAV,SYMBOL:ANTAL:GAV,…` öppnar appen med en bekräftelseruta och lägger till (eller uppdaterar) aktierna. GAV anges i samma enhet som Yahoo använder för symbolen (Londonaktier i pence, t.ex. `RR.L:7:1199`). Inget sparas i länken – den används bara i den enhet där den öppnas.

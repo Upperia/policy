@@ -1213,12 +1213,54 @@ window.addEventListener('online', () => { state.online = true; renderStatus(); m
 window.addEventListener('offline', () => { state.online = false; renderStatus(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') maybeAutoRefresh(); });
 
+/* ---------- Läs in innehav från en länk: ?innehav=SYMBOL:ANTAL:GAV,SYMBOL:ANTAL:GAV,… ---------- */
+function importFromLink() {
+  let raw = null;
+  try { raw = new URLSearchParams(location.search).get('innehav'); } catch (e) { raw = null; }
+  if (!raw) return false;
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* ignorera */ }
+  const list = raw.split(',').map(part => {
+    const f = part.trim().split(':');
+    const symbol = (f[0] || '').trim().toUpperCase();
+    if (!symbol) return null;
+    return { symbol, ticker: symbol.replace(/\.[A-Z]+$/, ''), antal: num(f[1]) == null ? 0 : num(f[1]), gav: num(f[2]) };
+  }).filter(Boolean);
+  if (!list.length) { toast('Länken innehöll inget innehav'); return false; }
+  const hasEx = state.stocks.some(s => s.exempel);
+  openSheet('Läs in innehav',
+    '<p class="hint">' + list.length + ' aktier finns i länken. Aktier som redan finns i appen uppdateras med antal och GAV, nya läggs till. Namn, kurser och nyckeltal hämtas direkt efteråt.</p>' +
+    '<div class="table-scroll"><table class="tx"><thead><tr><th>Symbol</th><th class="r">Antal</th><th class="r">GAV</th></tr></thead><tbody>' +
+      list.map(x => '<tr><td><b>' + esc(x.ticker) + '</b> <span class="muted">' + esc(x.symbol) + '</span></td><td class="num r">' + fmt(x.antal, 0) + '</td><td class="num r">' + (x.gav != null ? fmt(x.gav, 2) : '–') + '</td></tr>').join('') +
+    '</tbody></table></div>' +
+    (hasEx ? '<label class="check"><input type="checkbox" name="taBortExempel" checked> Ta bort exempelinnehaven</label>' : ''),
+    'Läs in', fd => {
+      if (fd.get('taBortExempel')) state.stocks = state.stocks.filter(s => !s.exempel);
+      let nya = 0, uppd = 0;
+      list.forEach(x => {
+        const cur = state.stocks.find(s => s.symbol === x.symbol);
+        if (cur) { cur.antal = x.antal; if (x.gav != null) cur.gav = x.gav; cur.updatedAt = new Date().toISOString(); uppd++; return; }
+        let id = slug(x.ticker);
+        if (stockById(id)) id = slug(x.symbol);
+        if (stockById(id)) id = id + '-' + uid().slice(0, 4);
+        const ns = normalizeStock({ id, ticker: x.ticker, symbol: x.symbol, namn: '', antal: x.antal, gav: x.gav }, id);
+        ns.updatedAt = new Date().toISOString();
+        state.stocks.push(ns); nya++;
+      });
+      state.stockId = null; state.view = 'portfolj';
+      store.save(); render();
+      toast(nya + ' tillagda' + (uppd ? ', ' + uppd + ' uppdaterade' : ''));
+      setTimeout(() => refreshAll({ silent: true }), 200);
+      return null;
+    });
+  return true;
+}
+
 /* ---------- Start ---------- */
 state.online = navigator.onLine !== false;
 state.view = viewFromHash();
 store.load();
 render();
-maybeAutoRefresh();
+if (!importFromLink()) maybeAutoRefresh();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
 }
