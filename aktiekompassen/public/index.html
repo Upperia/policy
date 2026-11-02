@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aktiekompassen</title>
+<meta name="description" content="Din egen aktieportfölj med nyckeltal, köp- och säljregler och en kompass som visar beslutsläget per aktie.">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161D28" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aktiekompassen">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: en kolumn (max 760px), sticky huvud med varumärke + tre flikar, kort för innehav,
+   formulär som bottenark på mobil och centrerad dialog på dator. */
+:root {
+  --bg: #F2F4F8;
+  --surface: #FFFFFF;
+  --surface-2: #E8ECF2;
+  --fg: #141A24;
+  --muted: #5C6778;
+  --line: #D6DCE6;
+  --accent: #1F4FD8;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #E3EAFB;
+  --buy: #15803D;  --buy-bg: #DCF5E6;
+  --sell: #C0243A; --sell-bg: #FCE4E8;
+  --watch: #B45309; --watch-bg: #FDEBD2;
+  --hold: #5C6778; --hold-bg: #E8ECF2;
+  --backdrop: rgba(10, 14, 22, .5);
+  --shadow: 0 1px 2px rgba(20,26,36,.06), 0 6px 20px rgba(20,26,36,.08);
+  --font-ui: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-num: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius: 10px;
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E131B; --surface: #161D28; --surface-2: #1F2834; --fg: #E7ECF3; --muted: #97A2B3; --line: #2A3442;
+    --accent: #86A4FF; --accent-fg: #0E131B; --accent-soft: #1C2A4D;
+    --buy: #4ADE80; --buy-bg: #11301F; --sell: #FB7185; --sell-bg: #3B1621; --watch: #FBBF24; --watch-bg: #3A2B0C;
+    --hold: #97A2B3; --hold-bg: #1F2834; --backdrop: rgba(0,0,0,.6);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E131B; --surface: #161D28; --surface-2: #1F2834; --fg: #E7ECF3; --muted: #97A2B3; --line: #2A3442;
+  --accent: #86A4FF; --accent-fg: #0E131B; --accent-soft: #1C2A4D;
+  --buy: #4ADE80; --buy-bg: #11301F; --sell: #FB7185; --sell-bg: #3B1621; --watch: #FBBF24; --watch-bg: #3A2B0C;
+  --hold: #97A2B3; --hold-bg: #1F2834; --backdrop: rgba(0,0,0,.6);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: var(--accent); }
+button { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.pos { color: var(--buy); }
+.neg { color: var(--sell); }
+.r { text-align: right; }
+.center { text-align: center; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Huvud */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--surface); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: -0.02em; font-size: 17px; padding-block: 12px; }
+.brand svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
+.brand .status-line { font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+.tabs { display: flex; gap: 2px; margin-left: auto; }
+.tab { position: relative; padding: 15px 12px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tab.active { color: var(--fg); border-bottom-color: var(--accent); }
+.badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--accent-fg); font-size: 11px; line-height: 18px; text-align: center; font-family: var(--font-num); margin-left: 4px; vertical-align: 1px; }
+.badge:empty { display: none; }
+@media (max-width: 520px) {
+  .brand { padding-block: 10px 0; }
+  .tabs { width: 100%; margin-left: 0; }
+  .tab { flex: 1; text-align: center; padding: 8px 4px 10px; }
+}
+
+/* Sida */
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 16px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+.block { display: grid; gap: 10px; min-width: 0; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.list-head h2, .card h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hint { font-size: 12.5px; color: var(--muted); }
+.lead { font-size: 13.5px; color: var(--muted); max-width: 60ch; }
+.notice { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; }
+.notice.warn { background: var(--watch-bg); }
+.notice.err { background: var(--sell-bg); }
+
+/* Knappar */
+.btn { appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 14px; cursor: pointer; line-height: 1.2; }
+.btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--sell); border-color: var(--sell); background: transparent; }
+.btn.link { border: none; background: none; color: var(--accent); padding: 0; }
+.btn.icon { padding: 6px 9px; font-size: 13px; }
+.btn.sm { padding: 5px 9px; font-size: 13px; }
+
+/* Sammanfattning */
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.summary.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 600px) { .summary { grid-template-columns: 1fr 1fr; } .summary.three .tile { padding: 10px 12px; } }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; min-width: 0; align-content: start; }
+.tile-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.tile-value { font-size: 21px; font-weight: 500; line-height: 1.2; overflow-wrap: anywhere; }
+.tile-sub { font-size: 12px; color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 4px 0 8px; vertical-align: 1px; }
+.dot:first-child { margin-left: 0; }
+.dot.kop { background: var(--buy); } .dot.salj { background: var(--sell); } .dot.watch { background: var(--watch); }
+
+/* Kort */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+/* Aktiekort */
+.stocks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stock-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; }
+.stock-card:hover { border-color: var(--accent); }
+.sc-main { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.sc-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ticker { font-weight: 800; letter-spacing: -0.01em; }
+.name { color: var(--muted); font-size: 13px; }
+.sc-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.sc-row .val { font-weight: 500; }
+.sc-verdict { display: grid; justify-items: center; gap: 2px; width: 76px; flex: none; }
+.sc-verdict svg { width: 66px; height: auto; }
+
+/* Chips */
+.chip { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--hold-bg); color: var(--hold); white-space: nowrap; line-height: 1.5; }
+.chip.kop { background: var(--buy-bg); color: var(--buy); }
+.chip.salj { background: var(--sell-bg); color: var(--sell); }
+.chip.bevaka { background: var(--watch-bg); color: var(--watch); }
+.chip.behall, .chip.saknas { background: var(--hold-bg); color: var(--hold); }
+.chip.exempel { background: var(--accent-soft); color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 600; }
+.chip.lista { background: var(--surface-2); color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 600; }
+.chip.stale, .chip.fel { background: var(--watch-bg); color: var(--watch); text-transform: none; letter-spacing: 0; font-weight: 600; }
+.chip.fel { background: var(--sell-bg); color: var(--sell); }
+.chip.sm { font-size: 10px; padding: 1px 6px; }
+
+/* Kompass */
+.gauge .z { fill: none; stroke-width: 9; }
+.gauge .z-salj { stroke: var(--sell); }
+.gauge .z-behall { stroke: var(--surface-2); }
+.gauge .z-kop { stroke: var(--buy); }
+.gauge .needle { stroke: var(--fg); stroke-width: 2.6; stroke-linecap: round; }
+.gauge .pivot { fill: var(--fg); }
+.gauge.none .needle, .gauge.none .pivot { opacity: .3; }
+
+/* Detalj */
+.detail { display: grid; gap: 14px; }
+.back { justify-self: start; }
+.d-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.d-ticker { font-size: 13px; font-weight: 700; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.d-name { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+.d-price { grid-template-columns: 1fr 1.3fr; align-items: start; gap: 16px; }
+@media (max-width: 560px) { .d-price { grid-template-columns: 1fr; } }
+.price-main { display: grid; gap: 4px; }
+.price-input { display: flex; align-items: baseline; gap: 6px; }
+.price-input input { font-size: 26px; font-weight: 500; padding: 4px 8px; width: 100%; max-width: 190px; }
+.price-big { font-size: 26px; font-weight: 500; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
+.facts > div { display: grid; gap: 1px; min-width: 0; }
+.facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; font-family: var(--font-ui); }
+.facts dd { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+.d-verdict { grid-template-columns: 190px 1fr; align-items: center; gap: 16px; }
+@media (max-width: 560px) { .d-verdict { grid-template-columns: 1fr; } }
+.gauge-wrap { display: grid; justify-items: center; gap: 2px; }
+.gauge-wrap svg { width: 170px; max-width: 100%; height: auto; }
+.verdict-label { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; text-transform: uppercase; }
+.verdict-label.kop { color: var(--buy); } .verdict-label.salj { color: var(--sell); } .verdict-label.bevaka { color: var(--watch); } .verdict-label.behall, .verdict-label.saknas { color: var(--muted); }
+.score { font-size: 13px; color: var(--muted); }
+.verdict-text { display: grid; gap: 8px; min-width: 0; }
+.rule-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 13px; }
+.rule-check li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.rule-check .mark { width: 16px; flex: none; font-weight: 800; text-align: center; }
+.rule-check .ok.kop .mark { color: var(--buy); }
+.rule-check .ok.salj .mark { color: var(--sell); }
+.rule-check .no .mark, .rule-check .na { color: var(--muted); }
+.rule-check .rc-text { flex: 1; min-width: 12ch; }
+.rc-meta { display: inline-flex; gap: 6px; align-items: center; }
+.weight { font-family: var(--font-num); font-size: 10px; letter-spacing: 2px; color: var(--muted); }
+.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; white-space: nowrap; background: none; line-height: 1.5; }
+button.tag { cursor: pointer; }
+.tag.auto { color: var(--accent); border-color: var(--accent); }
+.tag.lock { color: var(--watch); border-color: var(--watch); }
+
+.metrics { width: 100%; border-collapse: collapse; }
+.metrics th { text-align: left; font-weight: 500; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.metrics td { padding: 6px 0 6px 8px; border-top: 1px solid var(--line); }
+.metrics tr.grp th { border-top: none; padding: 12px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.metrics tr.grp:first-child th { padding-top: 0; }
+.metrics tr.grp + tr th, .metrics tr.grp + tr td { border-top: none; }
+.metrics td.val { width: 120px; text-align: right; }
+.metrics td.unit { width: 34px; color: var(--muted); font-size: 13px; }
+.metrics input { padding: 6px 8px; }
+.metrics .desc { font-size: 11.5px; color: var(--muted); font-weight: 400; }
+
+.rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rule { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); flex-wrap: wrap; }
+.rule.off { opacity: .55; }
+.rule-body { flex: 1; min-width: 14ch; }
+.rule-title { font-weight: 600; }
+.rule-sub { font-size: 12px; color: var(--muted); }
+.rule-meta { display: inline-flex; align-items: center; gap: 8px; }
+.switch input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; display: block; cursor: pointer; }
+
+.tx { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tx th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 4px 0; }
+.tx td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.tx th.r, .tx td.r { text-align: right; padding-left: 8px; }
+.table-scroll { overflow-x: auto; }
+
+textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-height: 72px; resize: vertical; }
+input[type="text"], input:not([type]), input[type="search"], input[type="date"], select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+input.num { font-family: var(--font-num); text-align: right; }
+input::placeholder { color: var(--muted); opacity: .8; }
+.danger-zone { display: flex; justify-content: flex-end; }
+
+/* Signaler */
+.signals { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.signal { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-left-width: 4px; border-radius: var(--radius); padding: 10px 14px; cursor: pointer; }
+.signal:hover { border-color: var(--accent); }
+.signal > .chip { min-width: 56px; text-align: center; }
+.signal.kop { border-left-color: var(--buy); }
+.signal.salj { border-left-color: var(--sell); }
+.sig-body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.sig-title { font-weight: 600; }
+.sig-text { font-size: 13px; color: var(--muted); }
+.verdict-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.verdict-row .btn { display: inline-flex; gap: 8px; align-items: center; }
+
+.metrics-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.metrics-list li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.metrics-list li:first-child { border-top: none; }
+.metrics-list .m-name { flex: 1; min-width: 14ch; }
+.metrics-list .m-unit { color: var(--muted); font-size: 13px; width: 34px; }
+.thresholds { display: grid; gap: 10px; }
+.thresholds label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.thresholds input { width: 72px; }
+.status { display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+.status .dot { margin: 0; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Tomt / laddar */
+.empty { text-align: center; padding: 36px 16px; display: grid; gap: 10px; justify-items: center; }
+.empty svg { width: 56px; height: 56px; color: var(--accent); }
+.empty p { max-width: 46ch; color: var(--muted); }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 1s linear infinite; display: inline-block; vertical-align: -4px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* Dialog */
+dialog { border: none; border-radius: 14px; padding: 0; background: var(--surface); color: var(--fg); width: min(540px, calc(100vw - 32px)); max-height: calc(100vh - 32px); box-shadow: var(--shadow); }
+dialog::backdrop { background: var(--backdrop); }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px 0; }
+.sheet-head h2 { font-size: 17px; font-weight: 700; }
+.sheet-body { padding: 12px 16px 16px; display: grid; gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > label, .field > .lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.seg label { flex: 1; text-align: center; padding: 8px 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.seg label + label { border-left: 1px solid var(--line); }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.seg label:has(input:checked) { background: var(--accent); color: var(--accent-fg); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.form-error { color: var(--sell); font-size: 13px; font-weight: 600; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.export-area { width: 100%; min-height: 160px; font-family: var(--font-num); font-size: 12px; }
+.sok-res { display: grid; gap: 6px; min-height: 48px; }
+.sok-hit { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; padding: 9px 10px; }
+.sok-hit .sh-sym { font-weight: 800; min-width: 9ch; }
+.sok-hit .sh-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-weight: 500; }
+.sok-hit .sh-bors { font-size: 12px; color: var(--muted); }
+@media (max-width: 600px) {
+  dialog { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 14px 14px 0 0; max-height: 92vh; }
+  .sheet-head, .sheet-body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .sheet-body { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; z-index: 20; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M16 8l-2.4 5.6L8 16l2.4-5.6z" fill="currentColor" stroke="none"/></svg>
+      <span>Aktiekompassen</span>
+      <span class="status-line" id="statusLine"></span>
+    </div>
+    <nav class="tabs" aria-label="Vyer">
+      <a href="#portfolj" class="tab" data-view="portfolj">Portfölj</a>
+      <a href="#signaler" class="tab" data-view="signaler">Signaler<span class="badge" id="sigBadge"></span></a>
+      <a href="#regler" class="tab" data-view="regler">Regler</a>
+    </nav>
+  </div>
+</header>
+<main id="app" class="wrap"></main>
+<dialog id="sheet" aria-label="Formulär"></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- Grunddata ---------- */
+const APP_BASE = 'https://pxskckkdftnknqcgpbng.supabase.co/functions/v1/aktiekompassen';
+const API = APP_BASE + '/api';
+const LS_KEY = 'aktiekompassen-v2';
+const LISTOR = ['', 'Large Cap', 'Mid Cap', 'Small Cap', 'First North', 'Utländsk', 'Fond/ETF', 'Annan'];
+const OPW = { '<': 'under', '<=': 'högst', '>': 'över', '>=': 'minst' };
+const SIG = { kop: 'Köp', salj: 'Sälj' };
+const REFRESH_MS = 60 * 60 * 1000; // uppdatera automatiskt när senaste hämtning är äldre än en timme
+
+// Allt som går att hämta automatiskt (nyckel → svensk beskrivning). Nyckeln matchar serverns svar.
+const KALLOR = {
+  vpa: 'Vinst per aktie, senaste 12 mån', utd: 'Utdelning per aktie, årstakt', da: 'Direktavkastning (Yahoo)',
+  pe: 'P/E, senaste 12 mån (Yahoo)', pe_forward: 'P/E framåtblickande', ps: 'P/S', pb: 'P/B',
+  tillv: 'Vinsttillväxt, senaste kvartal mot i fjol', oms_tillv: 'Omsättningstillväxt, senaste kvartal mot i fjol',
+  roe: 'Avkastning på eget kapital', marginal: 'Rörelsemarginal', vinstmarginal: 'Vinstmarginal',
+  skuld: 'Nettoskuld / EBITDA', skuld_ek: 'Skuld / eget kapital (%)', solid: 'Soliditet', ev_ebitda: 'EV / EBITDA',
+  utdandel: 'Utdelningsandel av vinsten', hogst52: '52-veckors högsta', lagst52: '52-veckors lägsta',
+  riktkurs: 'Riktkurs, analytikersnitt', borsvarde: 'Börsvärde', beta: 'Beta',
+};
+
+const BUILTIN = [
+  { id: 'kurs',    namn: 'Kurs',                        enhet: 'kr', dec: 2, auto: true, desc: 'Senaste kurs' },
+  { id: 'utv_gav', namn: 'Utveckling mot GAV',          enhet: '%',  dec: 1, auto: true, desc: '(kurs − GAV) / GAV' },
+  { id: 'pe',      namn: 'P/E',                         enhet: 'x',  dec: 1, auto: true, desc: 'Kurs / vinst per aktie' },
+  { id: 'da',      namn: 'Direktavkastning',            enhet: '%',  dec: 1, auto: true, desc: 'Utdelning / kurs' },
+  { id: 'vikt',    namn: 'Portföljvikt',                enhet: '%',  dec: 1, auto: true, desc: 'Andel av portföljvärdet' },
+  { id: 'fran52h', namn: 'Avstånd från 52-veckorshögsta', enhet: '%', dec: 1, auto: true, desc: 'Kurs mot högsta kursen senaste året' },
+  { id: 'uppsida', namn: 'Uppsida till riktkurs',       enhet: '%',  dec: 1, auto: true, desc: 'Analytikernas riktkurs mot kursen' },
+];
+
+const DEFAULT_SETTINGS = {
+  metrics: [
+    { id: 'vpa',      namn: 'Vinst per aktie (VPA)',       enhet: 'kr', dec: 2, kalla: 'vpa',       grupp: 'Värdering' },
+    { id: 'ps',       namn: 'P/S',                         enhet: 'x',  dec: 1, kalla: 'ps',        grupp: 'Värdering' },
+    { id: 'pb',       namn: 'P/B',                         enhet: 'x',  dec: 1, kalla: 'pb',        grupp: 'Värdering' },
+    { id: 'evebitda', namn: 'EV/EBITDA',                   enhet: 'x',  dec: 1, kalla: 'ev_ebitda', grupp: 'Värdering' },
+    { id: 'riktkurs', namn: 'Riktkurs (analytikersnitt)',  enhet: 'kr', dec: 0, kalla: 'riktkurs',  grupp: 'Värdering' },
+    { id: 'utd',      namn: 'Utdelning per aktie',         enhet: 'kr', dec: 2, kalla: 'utd',       grupp: 'Utdelning' },
+    { id: 'utdandel', namn: 'Utdelningsandel',             enhet: '%',  dec: 0, kalla: 'utdandel',  grupp: 'Utdelning' },
+    { id: 'tillv',    namn: 'Vinsttillväxt (kvartal, å/å)', enhet: '%', dec: 1, kalla: 'tillv',     grupp: 'Tillväxt & lönsamhet' },
+    { id: 'omstillv', namn: 'Omsättningstillväxt (kvartal, å/å)', enhet: '%', dec: 1, kalla: 'oms_tillv', grupp: 'Tillväxt & lönsamhet' },
+    { id: 'marginal', namn: 'Rörelsemarginal',             enhet: '%',  dec: 1, kalla: 'marginal',  grupp: 'Tillväxt & lönsamhet' },
+    { id: 'roe',      namn: 'Avkastning på eget kapital (ROE)', enhet: '%', dec: 1, kalla: 'roe',   grupp: 'Tillväxt & lönsamhet' },
+    { id: 'solid',    namn: 'Soliditet',                   enhet: '%',  dec: 0, kalla: 'solid',     grupp: 'Balansräkning' },
+    { id: 'skuld',    namn: 'Nettoskuld / EBITDA',         enhet: 'x',  dec: 1, kalla: 'skuld',     grupp: 'Balansräkning' },
+    { id: 'hogst52',  namn: '52-veckors högsta',           enhet: 'kr', dec: 2, kalla: 'hogst52',   grupp: 'Kurs' },
+    { id: 'lagst52',  namn: '52-veckors lägsta',           enhet: 'kr', dec: 2, kalla: 'lagst52',   grupp: 'Kurs' },
+  ],
+  rules: [
+    { id: 'r1',  metric: 'pe',      op: '<',  value: 15,  signal: 'kop',  vikt: 2, aktiv: true, namn: 'Lågt värderad' },
+    { id: 'r2',  metric: 'pe',      op: '>',  value: 30,  signal: 'salj', vikt: 2, aktiv: true, namn: 'Högt värderad' },
+    { id: 'r3',  metric: 'da',      op: '>=', value: 4,   signal: 'kop',  vikt: 1, aktiv: true, namn: 'Hög utdelning' },
+    { id: 'r4',  metric: 'utv_gav', op: '<',  value: -20, signal: 'kop',  vikt: 1, aktiv: true, namn: 'Öka på nedgång' },
+    { id: 'r5',  metric: 'utv_gav', op: '>',  value: 50,  signal: 'salj', vikt: 1, aktiv: true, namn: 'Ta hem vinst' },
+    { id: 'r6',  metric: 'vikt',    op: '>',  value: 25,  signal: 'salj', vikt: 2, aktiv: true, namn: 'För stor andel' },
+    { id: 'r7',  metric: 'solid',   op: '<',  value: 30,  signal: 'salj', vikt: 1, aktiv: true, namn: 'Svag balansräkning' },
+    { id: 'r8',  metric: 'tillv',   op: '>',  value: 10,  signal: 'kop',  vikt: 1, aktiv: true, namn: 'Växande vinst' },
+    { id: 'r9',  metric: 'tillv',   op: '<',  value: 0,   signal: 'salj', vikt: 1, aktiv: true, namn: 'Fallande vinst' },
+    { id: 'r10', metric: 'fran52h', op: '<',  value: -25, signal: 'kop',  vikt: 1, aktiv: true, namn: 'Långt under toppen' },
+    { id: 'r11', metric: 'uppsida', op: '>',  value: 20,  signal: 'kop',  vikt: 1, aktiv: true, namn: 'Analytiker ser uppsida' },
+    { id: 'r12', metric: 'skuld',   op: '>',  value: 3,   signal: 'salj', vikt: 1, aktiv: true, namn: 'Hög skuldsättning' },
+  ],
+  kopTroskel: 50,
+  saljTroskel: 50,
+};
+
+/* Exempelinnehav som visas första gången. Antal och GAV är påhittade; kurser och nyckeltal hämtas på riktigt. */
+const EXAMPLES = [
+  { id: 'inve-b', ticker: 'INVE-B', symbol: 'INVE-B.ST', namn: 'Investor B', antal: 60, gav: 245, exempel: true,
+    regler: [{ id: 'x1', metric: 'kurs', op: '>', value: 330, signal: 'salj', vikt: 3, aktiv: true, namn: 'Exempel på målkurs' }],
+    transaktioner: [{ datum: '2026-03-12', typ: 'kop', antal: 60, pris: 245, courtage: 0 }] },
+  { id: 'volv-b', ticker: 'VOLV-B', symbol: 'VOLV-B.ST', namn: 'Volvo B', antal: 80, gav: 262, exempel: true,
+    transaktioner: [{ datum: '2026-05-20', typ: 'kop', antal: 80, pris: 262, courtage: 0 }] },
+  { id: 'evo', ticker: 'EVO', symbol: 'EVO.ST', namn: 'Evolution', antal: 25, gav: 1180, exempel: true,
+    transaktioner: [{ datum: '2025-11-03', typ: 'kop', antal: 25, pris: 1180, courtage: 0 }] },
+  { id: 'swed-a', ticker: 'SWED-A', symbol: 'SWED-A.ST', namn: 'Swedbank A', antal: 120, gav: 198, exempel: true,
+    transaktioner: [{ datum: '2025-09-15', typ: 'kop', antal: 120, pris: 198, courtage: 0 }] },
+  { id: 'nibe-b', ticker: 'NIBE-B', symbol: 'NIBE-B.ST', namn: 'NIBE Industrier B', antal: 0, gav: null, exempel: true },
+];
+
+/* ---------- Hjälpare ---------- */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const app = $('#app');
+const sheet = $('#sheet');
+const toastEl = $('#toast');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+const isNum = v => typeof v === 'number' && isFinite(v);
+const num = v => { if (v == null || v === '') return null; const n = typeof v === 'number' ? v : Number(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : null; };
+const parseNum = num;
+const clampInt = (v, lo, hi, def) => { const n = Math.round(Number(v)); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def; };
+const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : '';
+const slug = s => String(s).toLowerCase().replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+const round4 = n => Math.round(n * 10000) / 10000;
+function todayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+const nfs = {};
+function fmt(n, dec) { if (!isNum(n)) return '–'; dec = dec == null ? 2 : dec; const k = String(dec); if (!nfs[k]) nfs[k] = new Intl.NumberFormat('sv-SE', { minimumFractionDigits: dec, maximumFractionDigits: dec }); return nfs[k].format(n); }
+function fmtKr(n, dec) { return isNum(n) ? fmt(n, dec == null ? 0 : dec) + ' kr' : '–'; }
+function fmtSigned(n, dec) { if (!isNum(n)) return '–'; return (n > 0 ? '+' : '') + fmt(n, dec); }
+function fmtPct(n, dec, sign) { if (!isNum(n)) return '–'; return (sign ? fmtSigned(n, dec) : fmt(n, dec)) + ' %'; }
+function fmtVal(v, def) { if (!isNum(v)) return '–'; const d = def || { enhet: '', dec: 1 }; const s = fmt(v, d.dec); return d.enhet === 'x' || !d.enhet ? s : s + ' ' + d.enhet; }
+function fmtBig(n) { if (!isNum(n)) return '–'; if (Math.abs(n) >= 1e9) return fmt(n / 1e9, 1) + ' mdkr'; if (Math.abs(n) >= 1e6) return fmt(n / 1e6, 0) + ' mkr'; return fmt(n, 0); }
+function inputVal(n, dec) { if (!isNum(n)) return ''; const p = Math.pow(10, dec == null ? 2 : dec); return String(Math.round(n * p) / p).replace('.', ','); }
+function fmtDate(iso) { if (!iso) return '–'; const d = new Date(iso.length > 10 ? iso : iso + 'T00:00:00'); if (isNaN(d)) return iso; return d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }); }
+function fmtTime(iso) { if (!iso) return '–'; const d = new Date(iso); if (isNaN(d)) return iso; const today = d.toDateString() === new Date().toDateString(); return (today ? 'idag ' : fmtDate(iso) + ' ') + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }); }
+function daysSince(iso) { if (!iso) return null; const d = new Date(iso.length > 10 ? iso : iso + 'T00:00:00'); if (isNaN(d)) return null; return Math.floor((Date.now() - d.getTime()) / 86400000); }
+function isStale(s) { if (!isNum(s.kurs) || s.kurs <= 0) return false; if (s.symbol) { return !s.hamtad || Date.now() - Date.parse(s.hamtad) > 36 * 3600 * 1000; } const d = daysSince(s.kursDatum); return d == null || d > 7; }
+let toastTimer;
+function toast(msg) { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2600); }
+
+/* ---------- Normalisering (allt som läses in passerar här) ---------- */
+function normalizeRule(r) {
+  return { id: String(r.id || uid()), metric: String(r.metric), op: ['<', '<=', '>', '>='].includes(r.op) ? r.op : '<',
+    value: num(r.value) == null ? 0 : num(r.value), signal: r.signal === 'salj' ? 'salj' : 'kop', vikt: clampInt(r.vikt, 1, 3, 1),
+    aktiv: r.aktiv !== false, namn: String(r.namn || '') };
+}
+function normalizeMetric(m) {
+  const out = { id: String(m.id), namn: String(m.namn), enhet: String(m.enhet == null ? '' : m.enhet), dec: clampInt(m.dec, 0, 3, 1) };
+  if (m.kalla && KALLOR[m.kalla]) out.kalla = String(m.kalla);
+  if (m.grupp) out.grupp = String(m.grupp);
+  return out;
+}
+function normalizeSettings(raw) {
+  const s = clone(DEFAULT_SETTINGS);
+  if (!raw || typeof raw !== 'object') return s;
+  if (Array.isArray(raw.metrics)) s.metrics = raw.metrics.filter(m => m && m.id && m.namn).map(normalizeMetric);
+  if (Array.isArray(raw.rules)) s.rules = raw.rules.filter(r => r && r.metric).map(normalizeRule);
+  s.kopTroskel = clampInt(raw.kopTroskel, 1, 100, s.kopTroskel);
+  s.saljTroskel = clampInt(raw.saljTroskel, 1, 100, s.saljTroskel);
+  return s;
+}
+function normalizeStock(raw, id) {
+  raw = raw || {};
+  const varden = {};
+  if (raw.varden && typeof raw.varden === 'object') Object.keys(raw.varden).forEach(k => { const v = num(raw.varden[k]); if (v != null) varden[k] = v; });
+  const las = {};
+  if (raw.las && typeof raw.las === 'object') Object.keys(raw.las).forEach(k => { if (raw.las[k]) las[k] = true; });
+  return {
+    id: String(id || raw.id || slug(raw.ticker || uid())),
+    ticker: String(raw.ticker || id || '').toUpperCase(),
+    symbol: raw.symbol ? String(raw.symbol).trim().toUpperCase() : '',
+    namn: String(raw.namn || ''),
+    lista: String(raw.lista || ''),
+    valuta: String(raw.valuta || 'SEK'),
+    fxSek: num(raw.fxSek) == null ? 1 : num(raw.fxSek),
+    antal: Math.max(0, num(raw.antal) == null ? 0 : num(raw.antal)),
+    gav: num(raw.gav),
+    kurs: num(raw.kurs),
+    kursDatum: raw.kursDatum ? String(raw.kursDatum) : null,
+    kursTid: raw.kursTid ? String(raw.kursTid) : null,
+    forandring: num(raw.forandring),
+    hamtad: raw.hamtad ? String(raw.hamtad) : null,
+    fel: raw.fel ? String(raw.fel) : null,
+    varning: raw.varning ? String(raw.varning) : null,
+    varden,
+    las,
+    regler: Array.isArray(raw.regler) ? raw.regler.filter(r => r && r.metric).map(normalizeRule) : [],
+    anteckning: String(raw.anteckning || ''),
+    transaktioner: Array.isArray(raw.transaktioner) ? raw.transaktioner.filter(t => t && num(t.antal) != null).map(t => ({
+      datum: String(t.datum || ''), typ: t.typ === 'salj' ? 'salj' : 'kop', antal: num(t.antal), pris: num(t.pris) == null ? 0 : num(t.pris),
+      courtage: num(t.courtage) == null ? 0 : num(t.courtage), resultat: num(t.resultat) })) : [],
+    exempel: !!raw.exempel,
+    updatedAt: raw.updatedAt ? String(raw.updatedAt) : null,
+  };
+}
+
+/* ---------- Tillstånd & lagring (bara i den här enheten) ---------- */
+const VIEWS = ['portfolj', 'signaler', 'regler'];
+const state = { view: 'portfolj', stockId: null, settings: clone(DEFAULT_SETTINGS), stocks: [], progress: null, online: true };
+const stockById = id => state.stocks.find(s => s.id === id) || null;
+const store = {
+  load() {
+    let data = null;
+    try { const raw = localStorage.getItem(LS_KEY); if (raw) data = JSON.parse(raw); } catch (e) { data = null; }
+    if (data && typeof data === 'object') {
+      state.settings = normalizeSettings(data.settings);
+      state.stocks = Array.isArray(data.stocks) ? data.stocks.map(s => normalizeStock(s, s && s.id)) : [];
+    } else {
+      state.stocks = EXAMPLES.map(s => normalizeStock(s, s.id));
+    }
+  },
+  save() { try { localStorage.setItem(LS_KEY, JSON.stringify({ version: 2, settings: state.settings, stocks: state.stocks, saved: new Date().toISOString() })); } catch (e) { toast('Kunde inte spara i webbläsarens lagring'); } },
+};
+function commitStock(s) { s.updatedAt = new Date().toISOString(); store.save(); render(); }
+function commitSettings() { store.save(); render(); }
+
+/* ---------- Hämtning av kurser och nyckeltal ---------- */
+async function api(path, params) {
+  const u = new URL(API + path);
+  Object.keys(params || {}).forEach(k => u.searchParams.set(k, params[k]));
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 30000);
+  try {
+    const r = await fetch(u.toString(), { headers: { 'x-region': 'us-east-1' }, signal: ctrl.signal });
+    let j = null;
+    try { j = await r.json(); } catch (e) { j = null; }
+    if (!r.ok || !j || (j && j.error)) throw new Error((j && j.error) || ('Servern svarade ' + r.status));
+    return j;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Hämtningen tog för lång tid');
+    if (e instanceof TypeError) throw new Error('Ingen kontakt med servern');
+    throw e;
+  } finally { clearTimeout(t); }
+}
+function applyQuote(s, q) {
+  if (isNum(q.kurs) && q.kurs > 0) { s.kurs = q.kurs; s.kursDatum = (q.kursTid || new Date().toISOString()).slice(0, 10); }
+  s.kursTid = q.kursTid || s.kursTid;
+  s.forandring = isNum(q.forandring) ? q.forandring : null;
+  if (q.valuta) s.valuta = q.valuta;
+  if (isNum(q.fxSek) && q.fxSek > 0) s.fxSek = q.fxSek; else if (s.valuta === 'SEK') s.fxSek = 1;
+  if (!s.namn && q.namn) s.namn = q.namn;
+  const nk = q.nyckeltal || {};
+  state.settings.metrics.forEach(m => {
+    if (!m.kalla || s.las[m.id]) return;
+    const v = nk[m.kalla];
+    if (isNum(v)) s.varden[m.id] = round4(v); else delete s.varden[m.id];
+  });
+  s.hamtad = new Date().toISOString();
+  s.fel = null;
+  s.varning = q.varning || null;
+}
+let refreshing = false;
+async function refreshStock(id) {
+  const s = stockById(id);
+  if (!s || !s.symbol) return;
+  try { const q = await api('/aktie', { symbol: s.symbol }); const cur = stockById(id); if (cur) { applyQuote(cur, q); commitStock(cur); } }
+  catch (e) { const cur = stockById(id); if (cur) { cur.fel = String(e.message || e); commitStock(cur); } throw e; }
+}
+async function refreshAll(opts) {
+  opts = opts || {};
+  if (refreshing) return;
+  const list = state.stocks.filter(s => s.symbol);
+  if (!list.length) { if (!opts.silent) toast('Inga aktier är kopplade till automatisk hämtning'); return; }
+  refreshing = true;
+  state.progress = { done: 0, total: list.length };
+  render();
+  let ok = 0; const fel = [];
+  for (const s0 of list) {
+    try { await refreshStock(s0.id); ok++; } catch (e) { fel.push(s0.ticker); }
+    state.progress = { done: state.progress.done + 1, total: list.length };
+    renderStatus();
+  }
+  refreshing = false;
+  state.progress = null;
+  store.save();
+  render();
+  if (fel.length) toast(ok + ' uppdaterade · gick inte: ' + fel.join(', '));
+  else if (!opts.silent || ok) toast(ok + (ok === 1 ? ' aktie uppdaterad' : ' aktier uppdaterade'));
+}
+function maybeAutoRefresh() {
+  const list = state.stocks.filter(s => s.symbol);
+  if (!list.length || refreshing) return;
+  const oldest = Math.min.apply(null, list.map(s => s.hamtad ? Date.parse(s.hamtad) || 0 : 0));
+  if (Date.now() - oldest > REFRESH_MS) refreshAll({ silent: true });
+}
+
+/* ---------- Beräkningar ---------- */
+function metricDefs() { return BUILTIN.concat(state.settings.metrics); }
+function metricById(id) { return metricDefs().find(m => m.id === id) || null; }
+const sek = (s, amount) => isNum(amount) ? amount * (s.fxSek || 1) : null;
+function ctxFor(stocks) {
+  let total = 0, cost = 0;
+  stocks.forEach(s => { if (s.antal > 0 && s.kurs > 0) total += sek(s, s.antal * s.kurs); if (s.antal > 0 && s.gav > 0) cost += sek(s, s.antal * s.gav); });
+  return { total, cost };
+}
+function metricValue(s, id, ctx) {
+  switch (id) {
+    case 'kurs': return s.kurs > 0 ? s.kurs : null;
+    case 'utv_gav': return (s.antal > 0 && s.gav > 0 && s.kurs > 0) ? (s.kurs - s.gav) / s.gav * 100 : null;
+    case 'pe': { const vpa = s.varden.vpa; return (isNum(vpa) && vpa > 0 && s.kurs > 0) ? s.kurs / vpa : null; }
+    case 'da': { const utd = s.varden.utd; return (isNum(utd) && s.kurs > 0) ? utd / s.kurs * 100 : null; }
+    case 'vikt': return s.antal > 0 ? (ctx.total > 0 && s.kurs > 0 ? sek(s, s.antal * s.kurs) / ctx.total * 100 : null) : 0;
+    case 'fran52h': { const h = s.varden.hogst52; return (isNum(h) && h > 0 && s.kurs > 0) ? (s.kurs / h - 1) * 100 : null; }
+    case 'uppsida': { const r = s.varden.riktkurs; return (isNum(r) && r > 0 && s.kurs > 0) ? (r / s.kurs - 1) * 100 : null; }
+    default: return isNum(s.varden[id]) ? s.varden[id] : null;
+  }
+}
+function compare(v, op, t) { return op === '<' ? v < t : op === '<=' ? v <= t : op === '>' ? v > t : v >= t; }
+function evaluate(s, ctx) {
+  const rules = state.settings.rules.filter(r => r.aktiv).map(r => Object.assign({}, r, { scope: 'global' }))
+    .concat(s.regler.filter(r => r.aktiv).map(r => Object.assign({}, r, { scope: 'aktie' })));
+  const rows = rules.map(r => {
+    const def = metricById(r.metric);
+    const value = def ? metricValue(s, r.metric, ctx) : null;
+    const status = value == null ? 'saknas' : (compare(value, r.op, r.value) ? 'uppfylld' : 'ej');
+    return { rule: r, def, value, status };
+  });
+  let kop = 0, kopDen = 0, salj = 0, saljDen = 0;
+  rows.forEach(x => {
+    if (x.status === 'saknas') return;
+    if (x.rule.signal === 'kop') { kopDen += x.rule.vikt; if (x.status === 'uppfylld') kop += x.rule.vikt; }
+    else { saljDen += x.rule.vikt; if (x.status === 'uppfylld') salj += x.rule.vikt; }
+  });
+  const kopShare = kopDen ? kop / kopDen * 100 : null;
+  const saljShare = saljDen ? salj / saljDen * 100 : null;
+  const score = (kopShare == null && saljShare == null) ? null : Math.round((kopShare || 0) - (saljShare || 0));
+  const triggered = rows.filter(x => x.status === 'uppfylld');
+  let verdict = 'saknas';
+  if (score != null) {
+    if (score >= state.settings.kopTroskel) verdict = 'kop';
+    else if (score <= -state.settings.saljTroskel) verdict = 'salj';
+    else if (triggered.length) verdict = 'bevaka';
+    else verdict = 'behall';
+  }
+  return { rows, kop, kopDen, salj, saljDen, kopShare, saljShare, score, verdict, triggered };
+}
+function verdictLabel(v, owned) {
+  return { kop: 'Köp', salj: owned ? 'Sälj' : 'Undvik', bevaka: 'Bevaka', behall: owned ? 'Behåll' : 'Avvakta', saknas: 'Saknar data' }[v] || v;
+}
+function evalAll() { const ctx = ctxFor(state.stocks); return state.stocks.map(s => ({ stock: s, ev: evaluate(s, ctx), ctx })); }
+function allSignals() {
+  const out = [];
+  evalAll().forEach(x => x.ev.triggered.forEach(row => out.push({ stock: x.stock, row })));
+  out.sort((a, b) => (b.row.rule.vikt - a.row.rule.vikt) || a.stock.ticker.localeCompare(b.stock.ticker, 'sv'));
+  return out;
+}
+function ruleTitle(r) { const d = metricById(r.metric); return (d ? d.namn : 'Okänt nyckeltal') + ' ' + r.op + ' ' + fmtVal(r.value, d); }
+function signalText(x) {
+  const d = x.def, r = x.rule;
+  if (x.status === 'saknas') return (d ? d.namn : 'Nyckeltalet') + ' – värde saknas';
+  if (x.status === 'uppfylld') return d.namn + ' ' + fmtVal(x.value, d) + ' är ' + OPW[r.op] + ' ' + fmtVal(r.value, d);
+  return d.namn + ' ' + fmtVal(x.value, d) + ' · regel: ' + OPW[r.op] + ' ' + fmtVal(r.value, d);
+}
+
+/* ---------- Kompassen ---------- */
+function gaugeSVG(score, extra) {
+  const kopT = state.settings.kopTroskel, saljT = state.settings.saljTroskel;
+  const pt = (sc, r) => { const a = (90 - sc * 0.9) * Math.PI / 180; return [50 + r * Math.cos(a), 52 - r * Math.sin(a)]; };
+  const arc = (s0, s1, klass) => {
+    if (s1 <= s0) return '';
+    const p0 = pt(s0, 42), p1 = pt(s1, 42);
+    return '<path class="z ' + klass + '" fill="none" d="M' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A42 42 0 0 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + '"/>';
+  };
+  const s = score == null ? 0 : Math.max(-100, Math.min(100, score));
+  const n = pt(s, 33);
+  return '<svg class="gauge ' + (score == null ? 'none ' : '') + (extra || '') + '" viewBox="0 0 100 58" aria-hidden="true">' +
+    arc(-100, -saljT, 'z-salj') + arc(-saljT, kopT, 'z-behall') + arc(kopT, 100, 'z-kop') +
+    '<line class="needle" x1="50" y1="52" x2="' + n[0].toFixed(2) + '" y2="' + n[1].toFixed(2) + '"/><circle class="pivot" cx="50" cy="52" r="3.2"/></svg>';
+}
+
+/* ---------- Rendering ---------- */
+function renderStatus() {
+  const el = $('#statusLine');
+  if (state.progress) el.innerHTML = '<span class="spinner" aria-hidden="true"></span> Uppdaterar ' + state.progress.done + '/' + state.progress.total;
+  else if (!state.online) el.textContent = 'Offline';
+  else el.textContent = '';
+}
+function render() {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === state.view));
+  const sig = allSignals();
+  $('#sigBadge').textContent = sig.length ? String(sig.length) : '';
+  renderStatus();
+  let html;
+  if (state.view === 'signaler') html = renderSignals();
+  else if (state.view === 'regler') html = renderRules();
+  else html = state.stockId ? renderDetail() : renderPortfolio();
+  app.innerHTML = html;
+}
+
+function compassIcon() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M16 8l-2.4 5.6L8 16l2.4-5.6z" fill="currentColor" stroke="none"/></svg>'; }
+function renderEmpty() {
+  return '<div class="card empty">' + compassIcon() + '<h2>Din portfölj är tom</h2>' +
+    '<p>Sök upp en aktie så hämtas kurs och nyckeltal automatiskt. Fyll i antal och GAV, och låt reglerna under <a href="#regler">Regler</a> ge köp- och säljsignaler. En aktie med antal 0 hamnar i bevakningslistan.</p>' +
+    '<button class="btn primary" data-action="add-stock">+ Lägg till första aktien</button></div>';
+}
+
+function stockCard(x, ctx) {
+  const s = x.stock, ev = x.ev, owned = s.antal > 0;
+  const value = owned && s.kurs > 0 ? sek(s, s.antal * s.kurs) : null;
+  const utvP = metricValue(s, 'utv_gav', ctx), vikt = metricValue(s, 'vikt', ctx);
+  const foreign = s.valuta && s.valuta !== 'SEK';
+  return '<li class="stock-card" data-action="open-stock" data-id="' + esc(s.id) + '" tabindex="0" role="button">' +
+    '<div class="sc-main">' +
+      '<div class="sc-title"><span class="ticker">' + esc(s.ticker) + '</span><span class="name">' + esc(s.namn) + '</span>' +
+        (s.exempel ? '<span class="chip exempel">Exempel</span>' : '') + (s.fel ? '<span class="chip fel">Hämtning misslyckades</span>' : (isStale(s) ? '<span class="chip stale">Gammal kurs</span>' : '')) + '</div>' +
+      '<div class="sc-row num"><span>' + (owned ? fmt(s.antal, 0) + ' st · ' : '') + (s.kurs > 0 ? fmt(s.kurs, 2) + ' ' + esc(foreign ? s.valuta : 'kr') : (s.symbol && !s.hamtad && !s.fel ? 'Hämtar…' : 'Kurs saknas')) + '</span>' +
+        '<span class="val">' + (value != null ? fmtKr(value) : (owned ? '' : 'Bevakas')) + '</span></div>' +
+      (owned
+        ? '<div class="sc-row num muted"><span>GAV ' + (s.gav > 0 ? fmt(s.gav, 2) : '–') + (isNum(s.forandring) ? ' · idag <span class="' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 1) + ' %</span>' : '') + '</span><span><span class="' + cls(utvP) + '">' + fmtPct(utvP, 1, true) + '</span> · Vikt ' + fmtPct(vikt, 1) + '</span></div>'
+        : '<div class="sc-row muted small"><span>' + (isNum(s.forandring) ? 'idag <span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 1) + ' %</span> · ' : '') + (ev.triggered.length ? ev.triggered.length + (ev.triggered.length === 1 ? ' signal' : ' signaler') : 'Inga signaler') + '</span></div>') +
+    '</div>' +
+    '<div class="sc-verdict">' + gaugeSVG(ev.score) + '<span class="chip ' + ev.verdict + '">' + verdictLabel(ev.verdict, owned) + '</span></div>' +
+  '</li>';
+}
+
+function renderPortfolio() {
+  if (!state.stocks.length) return renderEmpty();
+  const ctx = ctxFor(state.stocks);
+  const evals = evalAll();
+  const owned = evals.filter(e => e.stock.antal > 0).sort((a, b) => (sek(b.stock, b.stock.antal * (b.stock.kurs || 0))) - (sek(a.stock, a.stock.antal * (a.stock.kurs || 0))));
+  const watch = evals.filter(e => e.stock.antal <= 0).sort((a, b) => a.stock.ticker.localeCompare(b.stock.ticker, 'sv'));
+  const signals = allSignals();
+  const kopN = signals.filter(x => x.row.rule.signal === 'kop').length, saljN = signals.length - kopN;
+  const utv = ctx.total - ctx.cost, utvPct = ctx.cost > 0 ? utv / ctx.cost * 100 : null;
+  const hasEx = state.stocks.some(s => s.exempel);
+  const errs = state.stocks.filter(s => s.fel);
+  const latest = state.stocks.filter(s => s.hamtad).map(s => s.hamtad).sort().pop();
+  return '<section class="summary">' +
+      '<div class="tile"><div class="tile-label">Portföljvärde</div><div class="tile-value num">' + fmtKr(ctx.total) + '</div><div class="tile-sub num">Anskaffning ' + fmtKr(ctx.cost) + '</div></div>' +
+      '<div class="tile"><div class="tile-label">Utveckling</div><div class="tile-value num ' + cls(utv) + '">' + fmtSigned(utv, 0) + ' kr</div><div class="tile-sub num ' + cls(utv) + '">' + fmtPct(utvPct, 1, true) + '</div></div>' +
+      '<div class="tile"><div class="tile-label">Innehav</div><div class="tile-value num">' + owned.length + '</div><div class="tile-sub">' + (watch.length ? watch.length + ' bevakas' : 'Inga bevakade') + '</div></div>' +
+      '<div class="tile"><div class="tile-label">Signaler</div><div class="tile-value num">' + signals.length + '</div><div class="tile-sub"><span class="dot kop"></span>' + kopN + ' köp<span class="dot salj"></span>' + saljN + ' sälj</div></div>' +
+    '</section>' +
+    (hasEx ? '<div class="notice"><span>Exempelinnehav: antal och GAV är påhittade, kurser och nyckeltal hämtas på riktigt. Byt ut mot dina egna aktier när du vill.</span><button class="btn link" data-action="clear-examples">Ta bort exempel</button></div>' : '') +
+    (errs.length ? '<div class="notice err"><span>Kunde inte hämta: ' + esc(errs.map(s => s.ticker).join(', ')) + ' – ' + esc(errs[0].fel) + '</span><button class="btn link" data-action="refresh-all">Försök igen</button></div>' : '') +
+    '<section class="block"><div class="list-head"><h2>Innehav</h2><div class="actions">' +
+      '<button class="btn" data-action="refresh-all"' + (refreshing ? ' disabled' : '') + '>' + (refreshing ? 'Uppdaterar…' : 'Uppdatera') + '</button><button class="btn primary" data-action="add-stock">+ Lägg till aktie</button></div></div>' +
+      (owned.length ? '<ul class="stocks">' + owned.map(e => stockCard(e, ctx)).join('') + '</ul>' : '<p class="hint">Du äger inga aktier ännu. Lägg till en aktie med antal och GAV.</p>') +
+    '</section>' +
+    (watch.length ? '<section class="block"><div class="list-head"><h2>Bevakar</h2><span class="hint">Analyseras men räknas inte in i portföljen</span></div><ul class="stocks">' + watch.map(e => stockCard(e, ctx)).join('') + '</ul></section>' : '') +
+    '<p class="hint center">' + (latest ? 'Senast hämtat ' + esc(fmtTime(latest)) + ' · ' : '') + 'Kurser och nyckeltal hämtas automatiskt (Yahoo Finance) när appen öppnas och när du trycker Uppdatera.</p>';
+}
+
+function ruleRow(r, scope) {
+  return '<li class="rule' + (r.aktiv ? '' : ' off') + '">' +
+    '<label class="switch"><input type="checkbox" id="tr-' + esc(r.id) + '" data-action="' + (scope === 'aktie' ? 'toggle-stock-rule' : 'toggle-rule') + '" data-id="' + esc(r.id) + '"' + (r.aktiv ? ' checked' : '') + ' aria-label="Aktiv"></label>' +
+    '<div class="rule-body"><div class="rule-title">' + esc(ruleTitle(r)) + '</div>' + (r.namn ? '<div class="rule-sub">' + esc(r.namn) + '</div>' : '') + '</div>' +
+    '<span class="rule-meta"><span class="chip ' + r.signal + '">' + SIG[r.signal] + '</span><span class="weight" title="Vikt ' + r.vikt + '">' + '●'.repeat(r.vikt) + '</span>' +
+    '<button class="btn icon" data-action="' + (scope === 'aktie' ? 'edit-stock-rule' : 'edit-rule') + '" data-id="' + esc(r.id) + '">Ändra</button></span></li>';
+}
+
+function renderDetail() {
+  const s = stockById(state.stockId);
+  if (!s) { state.stockId = null; return renderPortfolio(); }
+  const ctx = ctxFor(state.stocks), ev = evaluate(s, ctx), owned = s.antal > 0;
+  const foreign = s.valuta && s.valuta !== 'SEK';
+  const cur = foreign ? s.valuta : 'kr';
+  const value = owned && s.kurs > 0 ? sek(s, s.antal * s.kurs) : null;
+  const cost = owned && s.gav > 0 ? sek(s, s.antal * s.gav) : null;
+  const utv = value != null && cost != null ? value - cost : null;
+  const utvP = metricValue(s, 'utv_gav', ctx), vikt = metricValue(s, 'vikt', ctx);
+  // Nyckeltal i grupper: först de beräknade, sedan de hämtade/inmatade per grupp.
+  const groups = [];
+  const grpOf = d => d.auto ? 'Beräknas i appen' : (d.grupp || 'Övriga nyckeltal');
+  metricDefs().filter(d => d.id !== 'kurs').forEach(d => { const g = grpOf(d); let grp = groups.find(x => x.namn === g); if (!grp) { grp = { namn: g, rows: [] }; groups.push(grp); } grp.rows.push(d); });
+  const metricRows = groups.map(g => '<tr class="grp"><th colspan="3">' + esc(g.namn) + '</th></tr>' + g.rows.map(d => {
+    const v = metricValue(s, d.id, ctx);
+    if (d.auto) return '<tr class="auto"><th scope="row">' + esc(d.namn) + '<div class="desc">' + esc(d.desc) + '</div></th><td class="val num">' + (v == null ? '<span class="muted">–</span>' : fmt(v, d.dec)) + '</td><td class="unit">' + esc(d.enhet) + '</td></tr>';
+    const raw = s.varden[d.id];
+    const autoTag = d.kalla && s.symbol ? (s.las[d.id] ? '<button class="tag lock" data-action="toggle-lock" data-id="' + esc(d.id) + '" title="Låst: skrivs inte över vid hämtning. Tryck för att låsa upp.">låst</button>' : '<button class="tag auto" data-action="toggle-lock" data-id="' + esc(d.id) + '" title="Hämtas automatiskt. Tryck för att låsa ett eget värde.">auto</button>') : '';
+    return '<tr><th scope="row"><label for="m-' + esc(d.id) + '">' + esc(d.namn) + '</label>' + autoTag + (d.kalla ? '<div class="desc">' + esc(KALLOR[d.kalla] || '') + '</div>' : '') + '</th><td class="val">' +
+      '<input id="m-' + esc(d.id) + '" class="num" inputmode="decimal" autocomplete="off" data-field="varden.' + esc(d.id) + '" value="' + inputVal(raw, 4) + '" placeholder="–">' +
+      '</td><td class="unit">' + esc(d.enhet === 'kr' && foreign ? s.valuta : d.enhet) + '</td></tr>';
+  }).join('')).join('');
+  const checkRows = ev.rows.map(x => {
+    const r = x.rule;
+    const mark = x.status === 'uppfylld' ? '✓' : x.status === 'ej' ? '–' : '?';
+    const klass = x.status === 'uppfylld' ? 'ok ' + r.signal : x.status === 'ej' ? 'no' : 'na';
+    return '<li class="' + klass + '"><span class="mark">' + mark + '</span><span class="rc-text">' + esc(signalText(x)) + (r.namn ? ' <span class="muted">· ' + esc(r.namn) + '</span>' : '') + '</span>' +
+      '<span class="rc-meta"><span class="chip sm ' + r.signal + '">' + SIG[r.signal] + '</span><span class="weight">' + '●'.repeat(r.vikt) + '</span>' + (r.scope === 'aktie' ? '<span class="tag">aktien</span>' : '') + '</span></li>';
+  }).join('');
+  const tx = s.transaktioner.slice().sort((a, b) => (b.datum || '').localeCompare(a.datum || ''));
+  const stale = isStale(s);
+  const fetchLine = s.symbol
+    ? (s.fel ? '<span class="chip fel">Hämtning misslyckades</span> ' + esc(s.fel) : (s.hamtad ? 'Hämtat ' + esc(fmtTime(s.hamtad)) + ' · Yahoo Finance (' + esc(s.symbol) + ')' : 'Inte hämtat ännu')) + (stale && !s.fel ? ' · <span class="chip stale">Gammal kurs</span>' : '') +
+      ' · <button class="btn link small" data-action="refresh-one"' + (refreshing ? ' disabled' : '') + '>Uppdatera nu</button>' + (s.varning ? '<br>' + esc(s.varning) : '')
+    : 'Manuell kurs' + (s.kursDatum ? ' från ' + esc(fmtDate(s.kursDatum)) : '') + (stale ? ' · <span class="chip stale">Gammal kurs</span>' : '') + ' · <button class="btn link small" data-action="edit-stock">Koppla till automatisk hämtning</button>';
+  return '<div class="detail">' +
+    '<button class="btn back" data-action="back">← Portfölj</button>' +
+    '<div class="d-head"><div><div class="d-ticker">' + esc(s.ticker) + (s.lista ? '<span class="chip lista">' + esc(s.lista) + '</span>' : '') + (foreign ? '<span class="chip lista">' + esc(s.valuta) + '</span>' : '') + (s.exempel ? '<span class="chip exempel">Exempel</span>' : '') + (owned ? '' : '<span class="chip">Bevakas</span>') + '</div><h1 class="d-name">' + esc(s.namn) + '</h1></div>' +
+      '<div class="actions"><button class="btn" data-action="edit-stock">Redigera</button><button class="btn primary" data-action="trade">Köp / Sälj</button></div></div>' +
+    '<section class="card d-price">' +
+      '<div class="price-main"><label class="tile-label" for="kurs-input">Kurs</label>' +
+        '<div class="price-input"><input id="kurs-input" class="num" inputmode="decimal" autocomplete="off" data-field="kurs" value="' + inputVal(s.kurs, 2) + '" placeholder="0,00"><span class="muted">' + esc(cur) + '</span>' + (isNum(s.forandring) ? '<span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 2) + ' %</span>' : '') + '</div>' +
+        '<div class="hint">' + fetchLine + '</div></div>' +
+      '<dl class="facts num">' +
+        '<div><dt>Antal</dt><dd>' + (owned ? fmt(s.antal, 0) + ' st' : 'Äger inte') + '</dd></div>' +
+        '<div><dt>GAV</dt><dd>' + (s.gav > 0 ? fmt(s.gav, 2) + ' ' + esc(cur) : '–') + '</dd></div>' +
+        '<div><dt>Marknadsvärde</dt><dd>' + (value != null ? fmtKr(value) : '–') + '</dd></div>' +
+        '<div><dt>Utveckling</dt><dd class="' + cls(utv) + '">' + (utv != null ? fmtSigned(utv, 0) + ' kr · ' + fmtPct(utvP, 1, true) : '–') + '</dd></div>' +
+        '<div><dt>Portföljvikt</dt><dd>' + (owned ? fmtPct(vikt, 1) : '–') + '</dd></div>' +
+        '<div><dt>Anskaffning</dt><dd>' + (cost != null ? fmtKr(cost) : '–') + '</dd></div>' +
+        (foreign ? '<div><dt>Växelkurs</dt><dd>1 ' + esc(s.valuta) + ' = ' + fmt(s.fxSek, 2) + ' kr</dd></div>' : '') +
+      '</dl>' +
+    '</section>' +
+    '<section class="card d-verdict">' +
+      '<div class="gauge-wrap">' + gaugeSVG(ev.score) + '<div class="verdict-label ' + ev.verdict + '">' + verdictLabel(ev.verdict, owned) + '</div><div class="score num">' + (ev.score == null ? 'Inga regler går att räkna på' : 'Poäng ' + fmtSigned(ev.score, 0)) + '</div></div>' +
+      '<div class="verdict-text">' +
+        '<p>' + (ev.score == null ? 'Fyll i nyckeltal så att reglerna kan räknas.' :
+          'Köpkriterier <b class="num">' + (ev.kopShare == null ? '–' : fmt(ev.kopShare, 0) + ' %') + '</b> uppfyllda · Säljkriterier <b class="num">' + (ev.saljShare == null ? '–' : fmt(ev.saljShare, 0) + ' %') + '</b>') + '</p>' +
+        (ev.rows.length ? '<ul class="rule-check">' + checkRows + '</ul>' : '<p class="hint">Inga aktiva regler. Lägg till under <a href="#regler">Regler</a>.</p>') +
+      '</div>' +
+    '</section>' +
+    '<section class="card"><div class="card-head"><h2>Nyckeltal</h2><a class="hint" href="#regler">Ändra listan</a></div>' +
+      '<table class="metrics"><tbody>' + metricRows + '</tbody></table>' +
+      '<p class="hint">' + (s.symbol ? 'Fält märkta <span class="tag auto">auto</span> fylls i vid varje hämtning. Vill du använda ett eget värde: skriv in det och tryck på auto så låses fältet.' : 'Skriv in värdena från bolagets rapport eller din mäklare. Tomt fält betyder att regler på det nyckeltalet hoppas över.') + '</p>' +
+    '</section>' +
+    '<section class="card"><div class="card-head"><h2>Regler för ' + esc(s.ticker) + '</h2><button class="btn sm" data-action="add-stock-rule">+ Regel</button></div>' +
+      (s.regler.length ? '<ul class="rules">' + s.regler.map(r => ruleRow(r, 'aktie')).join('') + '</ul>' : '<p class="hint">Inga egna regler. Här passar t.ex. en målkurs: Kurs &gt; 330 kr → Sälj.</p>') +
+      '<p class="hint">De allmänna reglerna under Regler gäller alltid också.</p>' +
+    '</section>' +
+    '<section class="card"><h2>Anteckning</h2><textarea id="note-input" data-field="anteckning" placeholder="Varför äger du aktien? Vad ska få dig att sälja?">' + esc(s.anteckning) + '</textarea></section>' +
+    (tx.length ? '<section class="card"><h2>Affärer</h2><div class="table-scroll"><table class="tx"><thead><tr><th>Datum</th><th>Typ</th><th class="r">Antal</th><th class="r">Pris</th><th class="r">Belopp</th></tr></thead><tbody>' +
+      tx.map(t => '<tr><td>' + esc(fmtDate(t.datum)) + '</td><td><span class="chip sm ' + t.typ + '">' + SIG[t.typ] + '</span></td><td class="num r">' + fmt(t.antal, 0) + '</td><td class="num r">' + fmt(t.pris, 2) + '</td><td class="num r">' + fmt(t.antal * t.pris, 0) + ' ' + esc(cur) +
+        (t.typ === 'salj' && isNum(t.resultat) ? '<div class="small ' + cls(t.resultat) + '">' + fmtSigned(t.resultat, 0) + ' ' + esc(cur) + '</div>' : '') + '</td></tr>').join('') +
+      '</tbody></table></div></section>' : '') +
+    '<div class="danger-zone"><button class="btn danger" data-action="delete-stock">Ta bort aktien</button></div>' +
+  '</div>';
+}
+
+function renderSignals() {
+  const evals = evalAll();
+  const signals = allSignals();
+  const kopN = signals.filter(x => x.row.rule.signal === 'kop').length, saljN = signals.length - kopN;
+  const stale = state.stocks.filter(s => isStale(s) || s.fel);
+  const order = { kop: 0, salj: 1, bevaka: 2, behall: 3, saknas: 4 };
+  const byVerdict = evals.slice().sort((a, b) => (order[a.ev.verdict] - order[b.ev.verdict]) || a.stock.ticker.localeCompare(b.stock.ticker, 'sv'));
+  return '<section class="summary three">' +
+      '<div class="tile"><div class="tile-label">Köpsignaler</div><div class="tile-value num pos">' + kopN + '</div></div>' +
+      '<div class="tile"><div class="tile-label">Säljsignaler</div><div class="tile-value num neg">' + saljN + '</div></div>' +
+      '<div class="tile"><div class="tile-label">Behöver data</div><div class="tile-value num" style="color:var(--watch)">' + stale.length + '</div><div class="tile-sub">gammal kurs eller fel</div></div>' +
+    '</section>' +
+    (state.stocks.length ? '<section class="card"><div class="card-head"><h2>Beslut just nu</h2><button class="btn primary sm" data-action="refresh-all"' + (refreshing ? ' disabled' : '') + '>' + (refreshing ? 'Uppdaterar…' : 'Uppdatera') + '</button></div>' +
+      '<div class="verdict-row">' + byVerdict.map(x => '<button class="btn sm" data-action="open-stock" data-id="' + esc(x.stock.id) + '"><span class="chip ' + x.ev.verdict + '">' + verdictLabel(x.ev.verdict, x.stock.antal > 0) + '</span>' + esc(x.stock.ticker) + '</button>').join('') + '</div></section>' : '') +
+    '<section class="block"><div class="list-head"><h2>Aktiva signaler</h2><span class="hint">Regler som är uppfyllda just nu</span></div>' +
+      (signals.length ? '<ul class="signals">' + signals.map(x => {
+        const r = x.row.rule;
+        return '<li class="signal ' + r.signal + '" data-action="open-stock" data-id="' + esc(x.stock.id) + '" tabindex="0" role="button">' +
+          '<span class="chip ' + r.signal + '">' + SIG[r.signal] + '</span>' +
+          '<div class="sig-body"><div class="sig-title">' + esc(x.stock.ticker) + (r.namn ? ' <span class="muted">· ' + esc(r.namn) + '</span>' : '') + '</div><div class="sig-text num">' + esc(signalText(x.row)) + '</div></div>' +
+          '<span class="weight" title="Vikt ' + r.vikt + '">' + '●'.repeat(r.vikt) + '</span></li>';
+      }).join('') + '</ul>' : '<div class="card empty"><p>Inga regler är uppfyllda just nu.' + (state.stocks.length ? '' : ' Lägg till aktier under Portfölj.') + '</p></div>') +
+    '</section>' +
+    (stale.length ? '<section class="block"><div class="list-head"><h2>Behöver ny data</h2></div><ul class="signals">' + stale.map(s => '<li class="signal" data-action="open-stock" data-id="' + esc(s.id) + '" tabindex="0" role="button"><span class="chip ' + (s.fel ? 'fel' : 'stale') + '">' + (s.fel ? 'Fel' : 'Gammal') + '</span><div class="sig-body"><div class="sig-title">' + esc(s.ticker) + ' <span class="muted">· ' + esc(s.namn) + '</span></div><div class="sig-text">' + esc(s.fel ? s.fel : (s.symbol ? (s.hamtad ? 'Hämtat ' + fmtTime(s.hamtad) : 'Inte hämtat ännu') : (s.kursDatum ? 'Manuell kurs från ' + fmtDate(s.kursDatum) : 'Kursdatum saknas'))) + '</div></div></li>').join('') + '</ul></section>' : '') +
+    '<p class="hint center">Signalerna räknas om varje gång kurser och nyckeltal hämtas eller när du ändrar något.</p>';
+}
+
+function renderRules() {
+  const st = state.settings;
+  const usedBy = id => st.rules.filter(r => r.metric === id).length + state.stocks.reduce((n, s) => n + s.regler.filter(r => r.metric === id).length, 0);
+  const latest = state.stocks.filter(s => s.hamtad).map(s => s.hamtad).sort().pop();
+  return '<section class="card"><div class="card-head"><h2>Beslutsregler</h2><button class="btn primary sm" data-action="add-rule">+ Ny regel</button></div>' +
+      '<p class="lead">Gäller alla aktier. En regel ger en köp- eller säljsignal när villkoret är uppfyllt. Vikten (1–3) styr hur mycket regeln väger i beslutet. Egna regler för en enskild aktie, t.ex. en målkurs, lägger du på aktiens sida.</p>' +
+      (st.rules.length ? '<ul class="rules">' + st.rules.map(r => ruleRow(r, 'global')).join('') + '</ul>' : '<p class="hint">Inga regler ännu.</p>') +
+    '</section>' +
+    '<section class="card"><h2>Så räknas beslutet</h2>' +
+      '<p class="lead">Köp- och säljreglerna vägs var för sig: <b>köpandel</b> är uppfylld köpvikt delat med all köpvikt som går att räkna på, och <b>säljandel</b> på samma sätt. Kompassen visar poängen <span class="num">köpandel − säljandel</span>, från −100 till +100. Regler som saknar värde räknas inte alls.</p>' +
+      '<div class="thresholds">' +
+        '<label><span class="chip kop">Köp</span> när poängen är minst <input id="kop-troskel" class="num" inputmode="numeric" data-field="settings.kopTroskel" value="' + st.kopTroskel + '"></label>' +
+        '<label><span class="chip salj">Sälj</span> när poängen är högst −<input id="salj-troskel" class="num" inputmode="numeric" data-field="settings.saljTroskel" value="' + st.saljTroskel + '"></label>' +
+        '<p class="hint"><span class="chip bevaka">Bevaka</span> när någon regel är uppfylld utan att tröskeln nås · <span class="chip behall">Behåll</span> när ingen regel slår.</p>' +
+      '</div>' +
+    '</section>' +
+    '<section class="card"><div class="card-head"><h2>Nyckeltal</h2><button class="btn sm" data-action="add-metric">+ Nytt nyckeltal</button></div>' +
+      '<p class="lead">De beräknade nyckeltalen följer alltid med. De övriga hämtas automatiskt från Yahoo Finance om de är kopplade till en källa, annars skriver du in dem själv per aktie. Allt här går att skriva regler på.</p>' +
+      '<ul class="metrics-list">' +
+        BUILTIN.map(d => '<li><span class="m-name">' + esc(d.namn) + '<span class="tag">' + (d.id === 'kurs' ? 'hämtas' : 'beräknas') + '</span><div class="hint">' + esc(d.desc) + '</div></span><span class="m-unit">' + esc(d.enhet) + '</span></li>').join('') +
+        st.metrics.map(m => '<li><span class="m-name">' + esc(m.namn) + (m.kalla ? '<span class="tag auto">auto</span>' : '<span class="tag">manuell</span>') + ((m.id === 'vpa' || m.id === 'utd') ? '<span class="tag">' + (m.id === 'vpa' ? 'ger P/E' : 'ger direktavkastning') + '</span>' : '') + '<div class="hint">' + esc(m.kalla ? (KALLOR[m.kalla] || '') : 'Matas in för hand') + (usedBy(m.id) ? ' · används i ' + usedBy(m.id) + (usedBy(m.id) === 1 ? ' regel' : ' regler') : '') + '</div></span><span class="m-unit">' + esc(m.enhet) + '</span>' +
+          '<button class="btn icon" data-action="edit-metric" data-id="' + esc(m.id) + '">Ändra</button></li>').join('') +
+      '</ul>' +
+    '</section>' +
+    '<section class="card"><h2>Data</h2>' +
+      '<p class="status"><span class="dot watch"></span>Allt sparas bara i den här enheten (webbläsarens lagring). Ta en säkerhetskopia då och då – den kan läsas in igen på en annan enhet.</p>' +
+      '<p class="status"><span class="dot kop"></span>Kurser och nyckeltal: Yahoo Finance via Aktiekompassens server. ' + (latest ? 'Senast hämtat ' + esc(fmtTime(latest)) + '.' : '') + '</p>' +
+      '<div class="btn-row"><button class="btn" data-action="export">Säkerhetskopia (JSON)</button><button class="btn" data-action="import">Läs in säkerhetskopia</button>' + (state.stocks.some(s => s.exempel) ? '<button class="btn" data-action="clear-examples">Ta bort exempeldata</button>' : '') + '</div>' +
+    '</section>';
+}
+
+/* ---------- Formulär (dialog) ---------- */
+let sheetSubmit = null;
+function openSheet(title, body, submitLabel, onSubmit, opts) {
+  opts = opts || {};
+  sheet.innerHTML = '<form id="sheetForm" novalidate><div class="sheet-head"><h2>' + esc(title) + '</h2><button type="button" class="btn icon" data-close aria-label="Stäng">✕</button></div>' +
+    '<div class="sheet-body">' + body + '<p class="form-error" id="form-error" hidden></p><div class="sheet-actions"><button type="button" class="btn" data-close>' + (submitLabel ? 'Avbryt' : 'Stäng') + '</button>' +
+    (submitLabel ? '<button type="submit" class="btn ' + (opts.danger ? 'danger' : 'primary') + '">' + esc(submitLabel) + '</button>' : '') + '</div></div></form>';
+  sheetSubmit = onSubmit;
+  if (!sheet.open) sheet.showModal();
+  const first = sheet.querySelector('input:not([type=radio]):not([type=checkbox]), select, textarea');
+  if (first && opts.focus !== false) first.focus();
+}
+sheet.addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target === sheet) sheet.close(); });
+sheet.addEventListener('submit', e => {
+  e.preventDefault();
+  const form = e.target;
+  const err = sheetSubmit ? sheetSubmit(new FormData(form), form) : null;
+  if (err) { const p = $('#form-error', form); p.textContent = err; p.hidden = false; return; }
+  sheet.close();
+});
+function field(id, label, inputHtml) { return '<div class="field"><label for="' + id + '">' + esc(label) + '</label>' + inputHtml + '</div>'; }
+function seg(name, options, current) {
+  return '<div class="seg">' + options.map(o => '<label><input type="radio" name="' + name + '" value="' + esc(o[0]) + '"' + (String(o[0]) === String(current) ? ' checked' : '') + '><span>' + esc(o[1]) + '</span></label>').join('') + '</div>';
+}
+
+// Sök bolag → välj → kurs och nyckeltal hämtas → fyll i antal och GAV.
+function searchForm() {
+  openSheet('Lägg till aktie',
+    field('f-sok', 'Sök bolag eller kortnamn', '<input id="f-sok" name="q" type="search" placeholder="t.ex. Investor, VOLV-B, Evolution" autocomplete="off" autocapitalize="off">') +
+    '<div id="sok-res" class="sok-res"><p class="hint">Skriv minst två tecken. Stockholmsbörsen visas först.</p></div>' +
+    '<p class="hint"><button type="button" class="btn link" data-action="manual-add">Lägg till utan automatisk hämtning</button></p>',
+    null, null);
+  const input = $('#f-sok'), box = $('#sok-res');
+  let timer = null, seq = 0;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { box.innerHTML = '<p class="hint">Skriv minst två tecken. Stockholmsbörsen visas först.</p>'; return; }
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      box.innerHTML = '<p class="hint"><span class="spinner"></span> Söker…</p>';
+      try {
+        const hits = await api('/sok', { q });
+        if (my !== seq) return;
+        box.innerHTML = hits.length ? hits.map(h => '<button type="button" class="btn sok-hit" data-symbol="' + esc(h.symbol) + '" data-namn="' + esc(h.namn) + '"><span class="sh-sym">' + esc(h.symbol.replace(/\.[A-Z]+$/, '')) + '</span><span class="sh-name">' + esc(h.namn) + '</span><span class="sh-bors">' + esc(h.bors) + (h.typ === 'ETF' ? ' · ETF' : '') + '</span></button>').join('')
+          : '<p class="hint">Inget bolag hittades. Prova bolagsnamnet eller kortnamnet från din mäklare.</p>';
+      } catch (e) { if (my === seq) box.innerHTML = '<p class="form-error">Sökningen misslyckades: ' + esc(e.message) + '</p>'; }
+    }, 350);
+  });
+  box.addEventListener('click', async e => {
+    const b = e.target.closest('[data-symbol]');
+    if (!b) return;
+    const symbol = b.dataset.symbol, namn = b.dataset.namn;
+    if (state.stocks.some(s => s.symbol === symbol)) { toast(symbol + ' finns redan i listan'); return; }
+    box.querySelectorAll('button').forEach(x => { x.disabled = true; });
+    box.insertAdjacentHTML('afterbegin', '<p class="hint"><span class="spinner"></span> Hämtar ' + esc(namn) + '…</p>');
+    try { const q = await api('/aktie', { symbol }); stockForm(null, q); }
+    catch (err) { box.querySelector('p').outerHTML = '<p class="form-error">Kunde inte hämta ' + esc(namn) + ': ' + esc(err.message) + '</p>'; box.querySelectorAll('button').forEach(x => { x.disabled = false; }); }
+  });
+  sheet.querySelector('[data-action=manual-add]').addEventListener('click', () => stockForm(null, null));
+}
+
+function stockForm(stock, q) {
+  const s = stock || { ticker: q ? q.symbol.replace(/\.[A-Z]+$/, '') : '', symbol: q ? q.symbol : '', namn: q ? q.namn : '', lista: '', antal: 0, gav: null, kurs: q ? q.kurs : null, kursDatum: todayISO() };
+  const autoNow = !!(q || (stock && stock.symbol));
+  openSheet(stock ? 'Redigera aktie' : 'Lägg till aktie',
+    (q ? '<div class="notice"><span>' + esc(q.namn) + ' · ' + (isNum(q.kurs) ? fmt(q.kurs, 2) + ' ' + esc(q.valuta || 'kr') : 'kurs saknas') + '. Kurs och nyckeltal hämtas automatiskt.</span></div>' : '') +
+    '<div class="row2">' +
+      field('f-ticker', 'Kortnamn (visas i listan)', '<input id="f-ticker" name="ticker" value="' + esc(s.ticker) + '" placeholder="t.ex. INVE-B" autocapitalize="characters" autocomplete="off">') +
+      field('f-lista', 'Lista (valfritt)', '<select id="f-lista" name="lista">' + LISTOR.map(l => '<option value="' + esc(l) + '"' + (l === s.lista ? ' selected' : '') + '>' + (l || '–') + '</option>').join('') + '</select>') +
+    '</div>' +
+    field('f-namn', 'Bolag', '<input id="f-namn" name="namn" value="' + esc(s.namn) + '" placeholder="t.ex. Investor B" autocomplete="off">') +
+    '<div class="row2">' +
+      field('f-antal', 'Antal aktier', '<input id="f-antal" name="antal" class="num" inputmode="numeric" value="' + inputVal(s.antal, 0) + '" placeholder="0 = bara bevaka">') +
+      field('f-gav', 'GAV (snittpris per aktie)', '<input id="f-gav" name="gav" class="num" inputmode="decimal" value="' + inputVal(s.gav, 2) + '" placeholder="från din mäklare">') +
+    '</div>' +
+    (autoNow ? '' : '<div class="row2">' +
+      field('f-kurs', 'Kurs', '<input id="f-kurs" name="kurs" class="num" inputmode="decimal" value="' + inputVal(s.kurs, 2) + '">') +
+      field('f-datum', 'Kursdatum', '<input id="f-datum" name="kursDatum" type="date" value="' + esc(s.kursDatum || todayISO()) + '">') +
+    '</div>') +
+    (stock ? field('f-symbol', 'Automatisk hämtning (Yahoo-symbol)', '<input id="f-symbol" name="symbol" value="' + esc(stock.symbol) + '" placeholder="t.ex. INVE-B.ST – tomt = manuell" autocapitalize="characters" autocomplete="off">') : ''),
+    stock ? 'Spara' : 'Lägg till', fd => {
+      const ticker = String(fd.get('ticker') || '').trim().toUpperCase(), namn = String(fd.get('namn') || '').trim();
+      if (!ticker) return 'Ange ett kortnamn.';
+      if (!namn) return 'Ange bolagets namn.';
+      const antal = parseNum(fd.get('antal')) == null ? 0 : parseNum(fd.get('antal'));
+      if (antal < 0) return 'Antal kan inte vara negativt.';
+      const gav = parseNum(fd.get('gav'));
+      if (stock) {
+        const cur = stockById(stock.id);
+        if (!cur) return 'Aktien finns inte längre.';
+        const symbol = String(fd.get('symbol') || '').trim().toUpperCase();
+        const symbolChanged = symbol !== cur.symbol;
+        Object.assign(cur, { ticker, namn, lista: String(fd.get('lista') || ''), antal, gav, symbol });
+        if (!autoNow || symbolChanged) { if (fd.get('kurs') != null) { const k = parseNum(fd.get('kurs')); if (k != null) cur.kurs = k; } if (fd.get('kursDatum')) cur.kursDatum = String(fd.get('kursDatum')); }
+        if (symbolChanged) { cur.hamtad = null; cur.fel = null; cur.varning = null; if (!symbol) { cur.forandring = null; } }
+        commitStock(cur);
+        if (symbolChanged && symbol) refreshStock(cur.id).catch(() => {});
+      } else {
+        let id = slug(ticker);
+        if (stockById(id)) { if (q) id = slug(q.symbol); if (stockById(id)) return ticker + ' finns redan.'; }
+        const ns = normalizeStock({ id, ticker, namn, lista: fd.get('lista'), antal, gav, symbol: s.symbol, kurs: q ? null : parseNum(fd.get('kurs')), kursDatum: q ? null : (String(fd.get('kursDatum') || '') || todayISO()) }, id);
+        if (q) applyQuote(ns, q);
+        state.stocks.push(ns);
+        if (antal > 0 && gav > 0) ns.transaktioner.push({ datum: todayISO(), typ: 'kop', antal, pris: gav, courtage: 0, resultat: null });
+        commitStock(ns);
+        state.stockId = id; state.view = 'portfolj'; render(); window.scrollTo(0, 0);
+      }
+      toast('Sparat'); return null;
+    });
+}
+
+function ruleForm(rule, scope, stock) {
+  const r = rule || { metric: 'pe', op: '<', value: null, signal: 'kop', vikt: 1, namn: '' };
+  const defs = metricDefs();
+  openSheet(rule ? 'Ändra regel' : (scope === 'aktie' ? 'Ny regel för ' + stock.ticker : 'Ny beslutsregel'),
+    field('f-metric', 'Nyckeltal', '<select id="f-metric" name="metric">' + defs.map(d => '<option value="' + esc(d.id) + '"' + (d.id === r.metric ? ' selected' : '') + '>' + esc(d.namn) + (d.enhet ? ' (' + esc(d.enhet) + ')' : '') + '</option>').join('') + '</select>') +
+    '<div class="row2">' +
+      field('f-op', 'Villkor', '<select id="f-op" name="op">' + ['<', '<=', '>', '>='].map(o => '<option value="' + o + '"' + (o === r.op ? ' selected' : '') + '>' + o + ' (' + OPW[o] + ')</option>').join('') + '</select>') +
+      field('f-value', 'Gränsvärde', '<input id="f-value" name="value" class="num" inputmode="decimal" autocomplete="off" value="' + inputVal(r.value, 4) + '">') +
+    '</div>' +
+    '<div class="row2">' +
+      '<div class="field"><span class="lbl">Signal när villkoret stämmer</span>' + seg('signal', [['kop', 'Köp'], ['salj', 'Sälj']], r.signal) + '</div>' +
+      '<div class="field"><span class="lbl">Vikt</span>' + seg('vikt', [[1, '1'], [2, '2'], [3, '3']], r.vikt) + '</div>' +
+    '</div>' +
+    field('f-rnamn', 'Benämning (valfri)', '<input id="f-rnamn" name="namn" value="' + esc(r.namn) + '" placeholder="t.ex. Målkurs, Lågt värderad" autocomplete="off">') +
+    (rule ? '<div class="btn-row"><button type="button" class="btn danger sm" data-action="sheet-delete-rule">Ta bort regeln</button></div>' : ''),
+    'Spara', fd => {
+      const value = parseNum(fd.get('value'));
+      if (value == null) return 'Ange ett gränsvärde.';
+      const data = { metric: String(fd.get('metric') || ''), op: String(fd.get('op') || '<'), value, signal: fd.get('signal') === 'salj' ? 'salj' : 'kop', vikt: clampInt(fd.get('vikt'), 1, 3, 1), namn: String(fd.get('namn') || '').trim() };
+      if (!metricById(data.metric)) return 'Välj ett nyckeltal.';
+      const st = scope === 'aktie' ? stockById(stock.id) : null;
+      if (scope === 'aktie' && !st) return 'Aktien finns inte längre.';
+      const list = scope === 'aktie' ? st.regler : state.settings.rules;
+      if (rule) { const cur = list.find(x => x.id === rule.id); if (!cur) return 'Regeln finns inte längre.'; Object.assign(cur, data); }
+      else list.push(normalizeRule(Object.assign({ id: uid(), aktiv: true }, data)));
+      if (scope === 'aktie') commitStock(st); else commitSettings();
+      toast('Regel sparad'); return null;
+    });
+  if (rule) {
+    sheet.querySelector('[data-action=sheet-delete-rule]').addEventListener('click', () => {
+      const st = scope === 'aktie' ? stockById(stock.id) : null;
+      if (scope === 'aktie') { if (!st) { sheet.close(); return; } st.regler = st.regler.filter(x => x.id !== rule.id); commitStock(st); }
+      else { state.settings.rules = state.settings.rules.filter(x => x.id !== rule.id); commitSettings(); }
+      sheet.close(); toast('Regel borttagen');
+    });
+  }
+}
+
+function metricForm(metric) {
+  const m = metric || { namn: '', enhet: 'x', dec: 1, kalla: '' };
+  openSheet(metric ? 'Ändra nyckeltal' : 'Nytt nyckeltal',
+    field('f-mnamn', 'Namn', '<input id="f-mnamn" name="namn" value="' + esc(m.namn) + '" placeholder="t.ex. EV/EBIT, Insynsköp senaste kvartalet" autocomplete="off">') +
+    field('f-kalla', 'Hämtas automatiskt från', '<select id="f-kalla" name="kalla"><option value="">– matas in för hand –</option>' + Object.keys(KALLOR).map(k => '<option value="' + k + '"' + (k === m.kalla ? ' selected' : '') + '>' + esc(KALLOR[k]) + '</option>').join('') + '</select>') +
+    '<div class="row2">' +
+      field('f-enhet', 'Enhet', '<select id="f-enhet" name="enhet">' + [['x', 'x (multipel)'], ['%', '%'], ['kr', 'kr'], ['st', 'st'], ['', 'ingen']].map(o => '<option value="' + o[0] + '"' + (o[0] === m.enhet ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>') +
+      field('f-dec', 'Decimaler', '<select id="f-dec" name="dec">' + [0, 1, 2].map(d => '<option' + (d === m.dec ? ' selected' : '') + '>' + d + '</option>').join('') + '</select>') +
+    '</div>' +
+    '<p class="hint">Hämtade värden fylls i vid varje uppdatering. Manuella värden fyller du i per aktie – ja/nej-saker fungerar fint som 1 och 0.</p>' +
+    (metric ? '<div class="btn-row"><button type="button" class="btn danger sm" data-action="sheet-delete-metric">Ta bort nyckeltalet</button></div>' : ''),
+    'Spara', fd => {
+      const namn = String(fd.get('namn') || '').trim();
+      if (!namn) return 'Ange ett namn.';
+      const enhet = String(fd.get('enhet') || ''), dec = clampInt(fd.get('dec'), 0, 3, 1), kalla = String(fd.get('kalla') || '');
+      if (metric) { const cur = state.settings.metrics.find(x => x.id === metric.id); if (!cur) return 'Nyckeltalet finns inte längre.'; Object.assign(cur, { namn, enhet, dec }); if (kalla) cur.kalla = kalla; else delete cur.kalla; }
+      else { let id = slug(namn).slice(0, 24); if (!id || metricById(id)) id = (id || 'nt') + '-' + uid().slice(0, 4); const nm = { id, namn, enhet, dec }; if (kalla) nm.kalla = kalla; state.settings.metrics.push(nm); }
+      commitSettings(); toast('Nyckeltal sparat');
+      if (kalla) toast('Nyckeltal sparat – värden fylls i vid nästa uppdatering');
+      return null;
+    });
+  if (metric) {
+    sheet.querySelector('[data-action=sheet-delete-metric]').addEventListener('click', () => {
+      const n = state.settings.rules.filter(r => r.metric === metric.id).length;
+      state.settings.metrics = state.settings.metrics.filter(x => x.id !== metric.id);
+      state.settings.rules = state.settings.rules.filter(r => r.metric !== metric.id);
+      commitSettings(); sheet.close();
+      toast(n ? 'Nyckeltalet och ' + n + (n === 1 ? ' regel' : ' regler') + ' togs bort' : 'Nyckeltal borttaget');
+    });
+  }
+}
+
+function tradeForm(stock) {
+  const cur = stock.valuta && stock.valuta !== 'SEK' ? stock.valuta : 'kr';
+  openSheet('Registrera affär · ' + stock.ticker,
+    '<div class="field"><span class="lbl">Typ</span>' + seg('typ', [['kop', 'Köp'], ['salj', 'Sälj']], 'kop') + '</div>' +
+    '<div class="row2">' +
+      field('f-tantal', 'Antal', '<input id="f-tantal" name="antal" class="num" inputmode="numeric" autocomplete="off">') +
+      field('f-tpris', 'Pris per aktie (' + cur + ')', '<input id="f-tpris" name="pris" class="num" inputmode="decimal" autocomplete="off" value="' + inputVal(stock.kurs, 2) + '">') +
+    '</div>' +
+    '<div class="row2">' +
+      field('f-tdatum', 'Datum', '<input id="f-tdatum" name="datum" type="date" value="' + todayISO() + '">') +
+      field('f-tcourtage', 'Courtage (valfritt)', '<input id="f-tcourtage" name="courtage" class="num" inputmode="decimal" autocomplete="off">') +
+    '</div>' +
+    '<p class="hint">Vid köp räknas nytt GAV som vägt snitt med courtaget inräknat. Vid sälj minskar antalet, GAV behålls och resultatet bokförs.</p>',
+    'Registrera', fd => {
+      const typ = fd.get('typ') === 'salj' ? 'salj' : 'kop';
+      const n = parseNum(fd.get('antal')), p = parseNum(fd.get('pris')), c = parseNum(fd.get('courtage')) == null ? 0 : parseNum(fd.get('courtage'));
+      if (n == null || n <= 0) return 'Ange antal.';
+      if (p == null || p < 0) return 'Ange pris.';
+      const datum = String(fd.get('datum') || '') || todayISO();
+      const t = { datum, typ, antal: n, pris: p, courtage: c, resultat: null };
+      stock = stockById(stock.id);
+      if (!stock) return 'Aktien finns inte längre.';
+      if (typ === 'kop') {
+        const oldA = stock.antal || 0, oldG = stock.gav > 0 ? stock.gav : 0;
+        stock.gav = (oldA * oldG + n * p + c) / (oldA + n);
+        stock.antal = oldA + n;
+      } else {
+        if (n > stock.antal) return 'Du äger bara ' + fmt(stock.antal, 0) + ' st.';
+        t.resultat = stock.gav > 0 ? n * (p - stock.gav) - c : null;
+        stock.antal -= n;
+      }
+      stock.transaktioner.push(t);
+      if (!stock.symbol) { stock.kurs = p; stock.kursDatum = datum; }
+      commitStock(stock);
+      toast(typ === 'kop' ? 'Köp registrerat' : (t.resultat != null ? 'Sälj registrerat · ' + fmtSigned(t.resultat, 0) + ' ' + cur : 'Sälj registrerat'));
+      return null;
+    });
+}
+
+function confirmSheet(title, text, label, onYes) {
+  openSheet(title, '<p>' + esc(text) + '</p>', label, () => { onYes(); return null; }, { danger: true, focus: false });
+}
+
+function exportJSON() {
+  const data = JSON.stringify({ app: 'Aktiekompassen', version: 2, exported: new Date().toISOString(), settings: state.settings, stocks: state.stocks }, null, 2);
+  const show = (msg) => {
+    openSheet('Säkerhetskopia', '<p class="hint">' + esc(msg) + '</p><textarea class="export-area" id="export-area" readonly>' + esc(data) + '</textarea>', null, null, { focus: false });
+    const ta = $('#export-area'); if (ta) { ta.focus(); ta.select(); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(data).then(() => show('Kopierat till urklipp. Klistra in i en anteckning eller fil som du sparar, t.ex. i Google Drive.'), () => show('Markera texten och kopiera den. Spara i en anteckning eller fil.'));
+  else show('Markera texten och kopiera den. Spara i en anteckning eller fil.');
+}
+function importForm() {
+  openSheet('Läs in säkerhetskopia',
+    '<p class="hint">Klistra in innehållet från en tidigare säkerhetskopia. Det ersätter allt som finns i appen nu.</p><textarea class="export-area" id="import-area" name="data" placeholder="{ &quot;app&quot;: &quot;Aktiekompassen&quot;, … }"></textarea>',
+    'Läs in', fd => {
+      let d = null;
+      try { d = JSON.parse(String(fd.get('data') || '')); } catch (e) { return 'Det gick inte att läsa texten som JSON.'; }
+      if (!d || typeof d !== 'object' || !Array.isArray(d.stocks)) return 'Det här ser inte ut som en säkerhetskopia från Aktiekompassen.';
+      state.settings = normalizeSettings(d.settings);
+      state.stocks = d.stocks.map(s => normalizeStock(s, s && s.id));
+      state.stockId = null;
+      store.save(); render(); toast(state.stocks.length + ' aktier inlästa');
+      maybeAutoRefresh();
+      return null;
+    });
+}
+
+/* ---------- Händelser ---------- */
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const a = t.dataset.action, id = t.dataset.id;
+  const s = state.stockId ? stockById(state.stockId) : null;
+  switch (a) {
+    case 'open-stock': state.stockId = id; state.view = 'portfolj'; if (location.hash !== '#portfolj') location.hash = 'portfolj'; render(); window.scrollTo(0, 0); break;
+    case 'back': state.stockId = null; render(); break;
+    case 'add-stock': searchForm(); break;
+    case 'edit-stock': if (s) stockForm(s, null); break;
+    case 'trade': if (s) tradeForm(s); break;
+    case 'delete-stock': if (s) confirmSheet('Ta bort ' + s.ticker + '?', 'Aktien tas bort tillsammans med nyckeltal, egna regler och affärer.', 'Ta bort', () => {
+      state.stocks = state.stocks.filter(x => x.id !== s.id); if (state.stockId === s.id) state.stockId = null; store.save(); render(); toast(s.ticker + ' borttagen'); }); break;
+    case 'refresh-all': refreshAll(); break;
+    case 'refresh-one': if (s) { toast('Hämtar ' + s.ticker + '…'); refreshStock(s.id).then(() => toast(s.ticker + ' uppdaterad'), err => toast('Gick inte: ' + err.message)); } break;
+    case 'toggle-lock': if (s) { if (s.las[id]) delete s.las[id]; else s.las[id] = true; commitStock(s); toast(s.las[id] ? 'Fältet är låst – skrivs inte över' : 'Fältet hämtas automatiskt igen'); } break;
+    case 'add-rule': ruleForm(null, 'global'); break;
+    case 'edit-rule': { const r = state.settings.rules.find(x => x.id === id); if (r) ruleForm(r, 'global'); break; }
+    case 'add-stock-rule': if (s) ruleForm(null, 'aktie', s); break;
+    case 'edit-stock-rule': if (s) { const r = s.regler.find(x => x.id === id); if (r) ruleForm(r, 'aktie', s); } break;
+    case 'add-metric': metricForm(null); break;
+    case 'edit-metric': { const m = state.settings.metrics.find(x => x.id === id); if (m) metricForm(m); break; }
+    case 'clear-examples': confirmSheet('Ta bort exempeldata?', 'De aktier som är märkta Exempel tas bort. Dina egna aktier och regler behålls.', 'Ta bort exempel', () => {
+      state.stocks = state.stocks.filter(x => !x.exempel); if (s && s.exempel) state.stockId = null; store.save(); render(); toast('Exempeldata borttagen'); }); break;
+    case 'export': exportJSON(); break;
+    case 'import': importForm(); break;
+  }
+});
+app.addEventListener('change', e => {
+  const el = e.target;
+  const act = el.dataset.action;
+  if (act === 'toggle-rule') { const r = state.settings.rules.find(x => x.id === el.dataset.id); if (r) { r.aktiv = el.checked; commitSettings(); } return; }
+  if (act === 'toggle-stock-rule') { const s0 = stockById(state.stockId); const r = s0 && s0.regler.find(x => x.id === el.dataset.id); if (r) { r.aktiv = el.checked; commitStock(s0); } return; }
+  const f = el.dataset.field;
+  if (!f) return;
+  const s = state.stockId ? stockById(state.stockId) : null;
+  if (f === 'kurs' && s) {
+    const v = parseNum(el.value);
+    if (v != null && v >= 0) { if (v !== s.kurs) { s.kurs = v; s.kursDatum = todayISO(); commitStock(s); toast(s.symbol ? 'Kurs sparad – skrivs över vid nästa hämtning' : 'Kurs sparad'); } else render(); }
+    else { render(); toast('Ogiltig kurs'); }
+  } else if (f.indexOf('varden.') === 0 && s) {
+    const id = f.slice(7), v = parseNum(el.value);
+    if (v == null) delete s.varden[id]; else s.varden[id] = v;
+    const def = metricById(id);
+    if (def && def.kalla && s.symbol && !s.las[id]) { s.las[id] = true; toast('Eget värde sparat och låst'); }
+    commitStock(s);
+  } else if (f === 'anteckning' && s) {
+    s.anteckning = el.value; commitStock(s);
+  } else if (f === 'settings.kopTroskel' || f === 'settings.saljTroskel') {
+    const key = f.split('.')[1], v = parseNum(el.value);
+    if (v != null) state.settings[key] = clampInt(v, 1, 100, state.settings[key]);
+    commitSettings();
+  }
+});
+app.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('input[data-field]')) { e.preventDefault(); e.target.blur(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.stock-card, .signal')) { e.preventDefault(); e.target.click(); }
+});
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  if (t.dataset.view === state.view) { state.stockId = null; render(); }
+}));
+function viewFromHash() { const h = location.hash.replace('#', ''); return VIEWS.includes(h) ? h : 'portfolj'; }
+window.addEventListener('hashchange', () => {
+  const v = viewFromHash();
+  if (v !== state.view) { state.view = v; state.stockId = null; }
+  render(); window.scrollTo(0, 0);
+});
+window.addEventListener('online', () => { state.online = true; renderStatus(); maybeAutoRefresh(); });
+window.addEventListener('offline', () => { state.online = false; renderStatus(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') maybeAutoRefresh(); });
+
+/* ---------- Start ---------- */
+state.online = navigator.onLine !== false;
+state.view = viewFromHash();
+store.load();
+render();
+maybeAutoRefresh();
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+}
+})();
+</script>
+</body>
+</html>
