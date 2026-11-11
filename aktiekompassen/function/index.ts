@@ -3,7 +3,7 @@
 // Själva appen ligger på GitHub Pages: https://upperia.github.io/policy/aktiekompassen/
 // Ingen portföljdata passerar eller sparas här – allt ligger i mobilens lagring.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { search, quote } from "./lib.ts";
+import { search, quote, history } from "./lib.ts";
 
 const NAME = "/aktiekompassen";
 const APP_URL = "https://upperia.github.io/policy/aktiekompassen/";
@@ -37,6 +37,11 @@ Deno.serve(async (req: Request) => {
       const symbol = (url.searchParams.get("symbol") || "").trim();
       if (!symbol) return json({ error: "symbol saknas" }, 400);
       return json(await quote(fetch, symbol));
+    }
+    if (path === "/api/historik") {
+      const symbol = (url.searchParams.get("symbol") || "").trim();
+      if (!symbol) return json({ error: "symbol saknas" }, 400);
+      return json(await history(fetch, symbol, url.searchParams.get("range") || "1y"), 200, 1800);
     }
     if (path === "/api/status") return json({ ok: true, tid: new Date().toISOString(), app: APP_URL });
     if (path === "" || path === "/" || path === "/index.html") return new Response(null, { status: 302, headers: { Location: APP_URL } });

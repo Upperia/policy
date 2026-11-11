@@ -144,6 +144,21 @@ async function chartPrice(f: FetchFn, symbol: string): Promise<{ kurs: number | 
   };
 }
 
+// Växelkurs: hur många enheter av `to` en enhet av `from` är värd.
+async function fxRate(f: FetchFn, from: string, to: string): Promise<number | null> {
+  if (!from || !to || from === to) return 1;
+  const key = "fx:" + from + to;
+  const c = cached<number>(key);
+  if (c) return c;
+  try {
+    const p = await chartPrice(f, from + to + "=X");
+    if (p.kurs != null && p.kurs > 0) { remember(key, p.kurs); return p.kurs; }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function fxToSek(f: FetchFn, valuta: string): Promise<number | null> {
   if (!valuta || valuta === "SEK") return 1;
   const key = "fx:" + valuta;
@@ -177,6 +192,39 @@ export async function quote(f: FetchFn, symbol: string): Promise<Quote> {
     const skuld = totalDebt != null && totalCash != null && ebitda != null && ebitda > 0 ? (totalDebt - totalCash) / ebitda : null;
     const valuta = typeof price.currency === "string" ? price.currency : null;
     const tid = raw(price.regularMarketTime);
+    // Yahoo blandar enheter: Londonaktier noteras i pence men vinst/utdelning per aktie anges i pund,
+    // och för bolag som redovisar i en annan valuta än kursen (t.ex. ABB i Stockholm, CHF) blir P/S, P/B
+    // och EV/EBITDA fel med en växelkursfaktor. Här räknas de om och kontrolleras mot egna beräkningar.
+    const pence = valuta === "GBp";
+    const fc = typeof fd.financialCurrency === "string" ? fd.financialCurrency : null;
+    let k = 1; // enheter av kursvalutan per enhet redovisningsvaluta
+    if (fc && valuta && fc !== valuta) {
+      const r = await fxRate(f, fc, pence ? "GBP" : valuta);
+      if (r) k = r * (pence ? 100 : 1);
+    } else if (pence) k = 100;
+    const trailingPE = raw(sd.trailingPE);
+    const divYield = raw(sd.dividendYield) ?? raw(sd.trailingAnnualDividendYield);
+    let vpa: number | null = null;
+    if (trailingPE != null && trailingPE > 0 && kurs) vpa = kurs / trailingPE;
+    else { const e = raw(ks.trailingEps) ?? raw(price.epsTrailingTwelveMonths); vpa = e == null ? null : e * (pence ? 100 : 1); }
+    let utd: number | null = null;
+    if (divYield != null && kurs) utd = kurs * divYield;
+    else { const d = raw(sd.dividendRate) ?? raw(sd.trailingAnnualDividendRate); utd = d == null ? null : d * (pence ? 100 : 1); }
+    const shares = raw(ks.sharesOutstanding) ?? raw(price.sharesOutstanding);
+    const capFromYahoo = raw(price.marketCap) ?? raw(sd.marketCap);
+    const marketCap = capFromYahoo ?? (kurs && shares ? kurs * shares : null);
+    // Yahoos börsvärde anges i pund för pence-noteringar, annars i kursvalutan; ett eget (kurs × antal aktier) är i kursvalutan.
+    const kMarket = capFromYahoo != null ? (pence ? 1 : k) : k;
+    const revenue = raw(fd.totalRevenue), bookPerShare = raw(ks.bookValue);
+    const pick = (yahoo: number | null, own: number | null): number | null => {
+      if (own == null || !isFinite(own)) return yahoo;
+      if (yahoo == null) return own;
+      return Math.abs(yahoo / own - 1) < 0.25 ? yahoo : own;
+    };
+    const ps = pick(raw(sd.priceToSalesTrailing12Months), marketCap && revenue && revenue > 0 ? marketCap / (revenue * kMarket) : null);
+    const pb = pick(raw(ks.priceToBook), kurs && bookPerShare && bookPerShare > 0 ? kurs / (bookPerShare * k) : null);
+    const evOwn = marketCap && ebitda && ebitda > 0 ? (marketCap + ((totalDebt ?? 0) - (totalCash ?? 0)) * kMarket) / (ebitda * kMarket) : null;
+    const evEbitda = pick(raw(ks.enterpriseToEbitda), evOwn);
     out = {
       symbol,
       namn: String(price.longName || price.shortName || symbol),
@@ -188,13 +236,13 @@ export async function quote(f: FetchFn, symbol: string): Promise<Quote> {
       fxSek: null,
       rekommendation: typeof fd.recommendationKey === "string" ? fd.recommendationKey : null,
       nyckeltal: {
-        vpa: raw(ks.trailingEps) ?? raw(price.epsTrailingTwelveMonths),
-        utd: raw(sd.dividendRate) ?? raw(sd.trailingAnnualDividendRate),
-        da: pct(raw(sd.dividendYield) ?? raw(sd.trailingAnnualDividendYield)),
-        pe: raw(sd.trailingPE),
+        vpa,
+        utd,
+        da: pct(divYield),
+        pe: trailingPE,
         pe_forward: raw(sd.forwardPE) ?? raw(ks.forwardPE),
-        ps: raw(sd.priceToSalesTrailing12Months),
-        pb: raw(ks.priceToBook),
+        ps,
+        pb,
         tillv: pct(raw(fd.earningsGrowth) ?? raw(ks.earningsQuarterlyGrowth)),
         oms_tillv: pct(raw(fd.revenueGrowth)),
         roe: pct(raw(fd.returnOnEquity)),
@@ -202,12 +250,12 @@ export async function quote(f: FetchFn, symbol: string): Promise<Quote> {
         vinstmarginal: pct(raw(fd.profitMargins)),
         skuld,
         skuld_ek: raw(fd.debtToEquity),
-        ev_ebitda: raw(ks.enterpriseToEbitda),
+        ev_ebitda: evEbitda,
         utdandel: pct(raw(sd.payoutRatio)),
         hogst52: raw(sd.fiftyTwoWeekHigh),
         lagst52: raw(sd.fiftyTwoWeekLow),
         riktkurs: raw(fd.targetMeanPrice),
-        borsvarde: raw(price.marketCap) ?? raw(sd.marketCap),
+        borsvarde: marketCap,
         beta: raw(ks.beta) ?? raw(sd.beta),
         solid: null,
       },
@@ -225,6 +273,26 @@ export async function quote(f: FetchFn, symbol: string): Promise<Quote> {
     };
   }
   out.fxSek = out.valuta ? await fxToSek(f, out.valuta) : null;
+  remember(key, out);
+  return out;
+}
+
+// Dagliga stängningskurser för facit och grafer. range: 3mo, 6mo, 1y, 2y, 5y.
+export async function history(f: FetchFn, symbol: string, range: string) {
+  const r = ["3mo", "6mo", "1y", "2y", "5y"].includes(range) ? range : "1y";
+  const key = "hist:" + symbol + ":" + r;
+  const c = cached<unknown>(key);
+  if (c) return c;
+  const url = Q + "/v8/finance/chart/" + encodeURIComponent(symbol) + "?range=" + r + "&interval=1d";
+  const res = await getJson(f, url, {});
+  const j = res.json as { chart?: { result?: Array<{ meta?: Record<string, unknown>; timestamp?: number[]; indicators?: { quote?: Array<{ close?: Array<number | null> }> } }>; error?: { description?: string } } } | null;
+  const row = j && j.chart && j.chart.result && j.chart.result[0];
+  if (!row) throw new Error((j && j.chart && j.chart.error && j.chart.error.description) || "Ingen historik för " + symbol);
+  const ts = row.timestamp || [];
+  const closes = (row.indicators && row.indicators.quote && row.indicators.quote[0] && row.indicators.quote[0].close) || [];
+  const priser: Array<[string, number]> = [];
+  ts.forEach((t, i) => { const v = closes[i]; if (typeof v === "number" && isFinite(v)) priser.push([new Date(t * 1000).toISOString().slice(0, 10), Math.round(v * 10000) / 10000]); });
+  const out = { symbol, valuta: row.meta && typeof row.meta.currency === "string" ? row.meta.currency : null, range: r, priser };
   remember(key, out);
   return out;
 }

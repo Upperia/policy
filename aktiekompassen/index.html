@@ -94,8 +94,13 @@ button { font: inherit; color: inherit; }
 @media (max-width: 520px) {
   .brand { padding-block: 10px 0; }
   .tabs { width: 100%; margin-left: 0; }
-  .tab { flex: 1; text-align: center; padding: 8px 4px 10px; }
+  .tab { flex: 1; text-align: center; padding: 8px 2px 10px; font-size: 13.5px; }
 }
+.facit .tx { font-size: 12.5px; }
+.facit .tx td, .facit .tx th { white-space: nowrap; padding-left: 6px; }
+.facit .tx td:first-child, .facit .tx th:first-child { padding-left: 0; }
+.facit .tx td.w { min-width: 7ch; }
+.facit .tx .chip.sm { font-size: 9.5px; padding: 1px 5px; }
 
 /* Sida */
 .wrap { max-width: 760px; margin: 0 auto; padding-block: 16px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
@@ -321,6 +326,7 @@ dialog::backdrop { background: var(--backdrop); }
       <a href="#portfolj" class="tab" data-view="portfolj">Portfölj</a>
       <a href="#signaler" class="tab" data-view="signaler">Signaler<span class="badge" id="sigBadge"></span></a>
       <a href="#regler" class="tab" data-view="regler">Regler</a>
+      <a href="#facit" class="tab" data-view="facit">Facit</a>
     </nav>
   </div>
 </header>
@@ -336,6 +342,7 @@ dialog::backdrop { background: var(--backdrop); }
 const APP_BASE = 'https://pxskckkdftnknqcgpbng.supabase.co/functions/v1/aktiekompassen';
 const API = APP_BASE + '/api';
 const LS_KEY = 'aktiekompassen-v2';
+const HIST_KEY = 'aktiekompassen-hist';
 const LISTOR = ['', 'Large Cap', 'Mid Cap', 'Small Cap', 'First North', 'Utländsk', 'Fond/ETF', 'Annan'];
 const OPW = { '<': 'under', '<=': 'högst', '>': 'över', '>=': 'minst' };
 const SIG = { kop: 'Köp', salj: 'Sälj' };
@@ -439,7 +446,7 @@ function inputVal(n, dec, fixed) { if (!isNum(n)) return ''; const d = dec == nu
 function fmtDate(iso) { if (!iso) return '–'; const d = new Date(iso.length > 10 ? iso : iso + 'T00:00:00'); if (isNaN(d)) return iso; return d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }); }
 function fmtTime(iso) { if (!iso) return '–'; const d = new Date(iso); if (isNaN(d)) return iso; const today = d.toDateString() === new Date().toDateString(); return (today ? 'idag ' : fmtDate(iso) + ' ') + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }); }
 function daysSince(iso) { if (!iso) return null; const d = new Date(iso.length > 10 ? iso : iso + 'T00:00:00'); if (isNaN(d)) return null; return Math.floor((Date.now() - d.getTime()) / 86400000); }
-function isStale(s) { if (!isNum(s.kurs) || s.kurs <= 0) return false; if (s.symbol) { return !s.hamtad || Date.now() - Date.parse(s.hamtad) > 36 * 3600 * 1000; } const d = daysSince(s.kursDatum); return d == null || d > 7; }
+function isStale(s) { if (!isNum(s.kurs) || s.kurs <= 0) return false; if (s.symbol) { if (!s.hamtad || Date.now() - Date.parse(s.hamtad) > 36 * 3600 * 1000) return true; if (s.kallaGammal) { const d = daysSince(s.kursDatum); return d == null || d > 7; } return false; } const d = daysSince(s.kursDatum); return d == null || d > 7; }
 let toastTimer;
 function toast(msg) { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2600); }
 
@@ -495,13 +502,15 @@ function normalizeStock(raw, id) {
       datum: String(t.datum || ''), typ: t.typ === 'salj' ? 'salj' : 'kop', antal: num(t.antal), pris: num(t.pris) == null ? 0 : num(t.pris),
       courtage: num(t.courtage) == null ? 0 : num(t.courtage), resultat: num(t.resultat) })) : [],
     exempel: !!raw.exempel,
+    kallaGammal: !!raw.kallaGammal,
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : null,
   };
 }
+function normalizeLog(e) { return { d: String(e.d || ''), id: String(e.id || ''), sym: String(e.sym || ''), t: String(e.t || ''), k: num(e.k), fx: num(e.fx) == null ? 1 : num(e.fx), v: String(e.v || 'saknas'), p: num(e.p) }; }
 
 /* ---------- Tillstånd & lagring (bara i den här enheten) ---------- */
-const VIEWS = ['portfolj', 'signaler', 'regler'];
-const state = { view: 'portfolj', stockId: null, settings: clone(DEFAULT_SETTINGS), stocks: [], progress: null, online: true };
+const VIEWS = ['portfolj', 'signaler', 'regler', 'facit'];
+const state = { view: 'portfolj', stockId: null, settings: clone(DEFAULT_SETTINGS), stocks: [], logg: [], hist: {}, progress: null, online: true };
 const stockById = id => state.stocks.find(s => s.id === id) || null;
 const store = {
   load() {
@@ -510,14 +519,17 @@ const store = {
     if (data && typeof data === 'object') {
       state.settings = normalizeSettings(data.settings);
       state.stocks = Array.isArray(data.stocks) ? data.stocks.map(s => normalizeStock(s, s && s.id)) : [];
+      state.logg = Array.isArray(data.logg) ? data.logg.filter(e => e && e.d && e.id && num(e.k) > 0).map(normalizeLog) : [];
     } else {
       state.stocks = EXAMPLES.map(s => normalizeStock(s, s.id));
     }
+    try { const h = localStorage.getItem(HIST_KEY); state.hist = h ? (JSON.parse(h) || {}) : {}; } catch (e) { state.hist = {}; }
   },
-  save() { try { localStorage.setItem(LS_KEY, JSON.stringify({ version: 2, settings: state.settings, stocks: state.stocks, saved: new Date().toISOString() })); } catch (e) { toast('Kunde inte spara i webbläsarens lagring'); } },
+  save() { try { localStorage.setItem(LS_KEY, JSON.stringify({ version: 2, settings: state.settings, stocks: state.stocks, logg: state.logg, saved: new Date().toISOString() })); } catch (e) { toast('Kunde inte spara i webbläsarens lagring'); } },
+  saveHist() { try { localStorage.setItem(HIST_KEY, JSON.stringify(state.hist)); } catch (e) { /* får inte plats – facit räknar då bara "hittills" */ } },
 };
-function commitStock(s) { s.updatedAt = new Date().toISOString(); store.save(); render(); }
-function commitSettings() { store.save(); render(); }
+function commitStock(s) { s.updatedAt = new Date().toISOString(); loggaBeslut(); store.save(); render(); }
+function commitSettings() { loggaBeslut(); store.save(); render(); }
 
 /* ---------- Hämtning av kurser och nyckeltal ---------- */
 async function api(path, params) {
@@ -538,7 +550,12 @@ async function api(path, params) {
   } finally { clearTimeout(t); }
 }
 function applyQuote(s, q) {
-  if (isNum(q.kurs) && q.kurs > 0) { s.kurs = q.kurs; s.kursDatum = (q.kursTid || new Date().toISOString()).slice(0, 10); }
+  const tidDatum = q.kursTid ? String(q.kursTid).slice(0, 10) : null;
+  s.kallaGammal = !!(tidDatum && daysSince(tidDatum) > 7);
+  if (isNum(q.kurs) && q.kurs > 0) {
+    // Om källan saknar färsk kurs och du själv skrivit in en nyare, behålls din.
+    if (!(s.kallaGammal && s.kursDatum && s.kursDatum > tidDatum)) { s.kurs = q.kurs; s.kursDatum = tidDatum || todayISO(); }
+  }
   s.kursTid = q.kursTid || s.kursTid;
   s.forandring = isNum(q.forandring) ? q.forandring : null;
   if (q.valuta) s.valuta = q.valuta;
@@ -552,7 +569,7 @@ function applyQuote(s, q) {
   });
   s.hamtad = new Date().toISOString();
   s.fel = null;
-  s.varning = q.varning || null;
+  s.varning = q.varning || (s.kallaGammal ? 'Yahoo har ingen kurs nyare än ' + fmtDate(tidDatum) + '. Skriv in kursen själv så behålls den tills källan hinner ikapp.' : null);
 }
 let refreshing = false;
 async function refreshStock(id) {
@@ -577,6 +594,7 @@ async function refreshAll(opts) {
   }
   refreshing = false;
   state.progress = null;
+  loggaBeslut();
   store.save();
   render();
   if (fel.length) toast(ok + ' uppdaterade · gick inte: ' + fel.join(', '));
@@ -657,6 +675,63 @@ function signalText(x) {
   return d.namn + ' ' + fmtVal(x.value, d) + ' · regel: ' + OPW[r.op] + ' ' + fmtVal(r.value, d);
 }
 
+/* ---------- Beslutslogg (facit) ---------- */
+// En rad per aktie och dag: kurs, beslut och poäng vid dagens senaste beräkning. Gamla rader ändras aldrig,
+// så loggen visar vad appen faktiskt sa – även om reglerna ändras senare.
+function loggaBeslut() {
+  const d = todayISO(), ctx = ctxFor(state.stocks);
+  let changed = false;
+  state.stocks.forEach(s => {
+    if (!(s.kurs > 0)) return;
+    const ev = evaluate(s, ctx);
+    const e = { d, id: s.id, sym: s.symbol || '', t: s.ticker, k: s.kurs, fx: s.fxSek || 1, v: ev.verdict, p: ev.score };
+    const i = state.logg.findIndex(x => x.d === d && x.id === s.id);
+    if (i >= 0) { if (JSON.stringify(state.logg[i]) !== JSON.stringify(e)) { state.logg[i] = e; changed = true; } }
+    else { state.logg.push(e); changed = true; }
+  });
+  if (state.logg.length > 8000) state.logg = state.logg.slice(-8000);
+  return changed;
+}
+function addDays(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function histPriceAt(sym, iso) { const h = state.hist[sym]; if (!h || !Array.isArray(h.priser)) return null; for (let i = 0; i < h.priser.length; i++) { if (h.priser[i][0] >= iso) return h.priser[i][1]; } return null; }
+function utfall(e, dagar) { const mal = addDays(e.d, dagar); if (mal > todayISO() || !e.sym) return null; const c = histPriceAt(e.sym, mal); return isNum(c) && e.k > 0 ? c / e.k - 1 : null; }
+function utfallNu(e) {
+  const s = stockById(e.id);
+  let k = s && s.kurs > 0 ? s.kurs : null;
+  if (k == null) { const last = state.logg.filter(x => x.id === e.id).sort((a, b) => a.d.localeCompare(b.d)).pop(); k = last ? last.k : null; }
+  return isNum(k) && e.k > 0 ? k / e.k - 1 : null;
+}
+// Händelser = när beslutet för en aktie ändras (eller första gången den loggas).
+function facitEvents() {
+  const byStock = {};
+  state.logg.slice().sort((a, b) => a.d.localeCompare(b.d)).forEach(e => { (byStock[e.id] = byStock[e.id] || []).push(e); });
+  const events = [];
+  Object.keys(byStock).forEach(id => { let prev = null; byStock[id].forEach(e => { if (!prev || prev.v !== e.v) events.push(Object.assign({ fran: prev ? prev.v : null }, e)); prev = e; }); });
+  events.sort((a, b) => b.d.localeCompare(a.d) || a.t.localeCompare(b.t, 'sv'));
+  return events;
+}
+let histLoading = false;
+function ensureHistory(events) {
+  if (histLoading || !state.online) return;
+  const today = todayISO();
+  const need = {};
+  events.forEach(e => { if (!e.sym || addDays(e.d, 7) > today) return; const h = state.hist[e.sym]; if (!h || !h.hamtad || Date.now() - Date.parse(h.hamtad) > 20 * 3600 * 1000) need[e.sym] = Math.min(need[e.sym] || 1e9, daysSince(e.d) || 0); });
+  const syms = Object.keys(need);
+  if (!syms.length) return;
+  histLoading = true;
+  (async () => {
+    for (const sym of syms) {
+      const age = need[sym];
+      const range = age > 700 ? '5y' : age > 330 ? '2y' : '1y';
+      try { const h = await api('/historik', { symbol: sym, range }); if (h && Array.isArray(h.priser)) { state.hist[sym] = { hamtad: new Date().toISOString(), valuta: h.valuta || null, priser: h.priser }; } }
+      catch (e) { state.hist[sym] = state.hist[sym] || { hamtad: new Date().toISOString(), priser: [] }; }
+    }
+    store.saveHist();
+    histLoading = false;
+    if (state.view === 'facit') render();
+  })();
+}
+
 /* ---------- Kompassen ---------- */
 function gaugeSVG(score, extra) {
   const kopT = state.settings.kopTroskel, saljT = state.settings.saljTroskel;
@@ -688,6 +763,7 @@ function render() {
   let html;
   if (state.view === 'signaler') html = renderSignals();
   else if (state.view === 'regler') html = renderRules();
+  else if (state.view === 'facit') html = renderFacit();
   else html = state.stockId ? renderDetail() : renderPortfolio();
   app.innerHTML = html;
 }
@@ -707,7 +783,7 @@ function stockCard(x, ctx) {
   return '<li class="stock-card" data-action="open-stock" data-id="' + esc(s.id) + '" tabindex="0" role="button">' +
     '<div class="sc-main">' +
       '<div class="sc-title"><span class="ticker">' + esc(s.ticker) + '</span><span class="name">' + esc(s.namn) + '</span>' +
-        (s.exempel ? '<span class="chip exempel">Exempel</span>' : '') + (s.fel ? '<span class="chip fel">Hämtning misslyckades</span>' : (isStale(s) ? '<span class="chip stale">Gammal kurs</span>' : '')) + '</div>' +
+        (s.exempel ? '<span class="chip exempel">Exempel</span>' : '') + (s.fel ? '<span class="chip fel">Hämtning misslyckades</span>' : (s.kallaGammal ? '<span class="chip stale">Källan släpar</span>' : (isStale(s) ? '<span class="chip stale">Gammal kurs</span>' : ''))) + '</div>' +
       '<div class="sc-row num"><span>' + (owned ? fmt(s.antal, 0) + ' st · ' : '') + (s.kurs > 0 ? fmt(s.kurs, 2) + ' ' + esc(foreign ? s.valuta : 'kr') : (s.symbol && !s.hamtad && !s.fel ? 'Hämtar…' : 'Kurs saknas')) + '</span>' +
         '<span class="val">' + (value != null ? fmtKr(value) : (owned ? '' : 'Bevakas')) + '</span></div>' +
       (owned
@@ -858,6 +934,43 @@ function renderSignals() {
     '</section>' +
     (stale.length ? '<section class="block"><div class="list-head"><h2>Behöver ny data</h2></div><ul class="signals">' + stale.map(s => '<li class="signal" data-action="open-stock" data-id="' + esc(s.id) + '" tabindex="0" role="button"><span class="chip ' + (s.fel ? 'fel' : 'stale') + '">' + (s.fel ? 'Fel' : 'Gammal') + '</span><div class="sig-body"><div class="sig-title">' + esc(s.ticker) + ' <span class="muted">· ' + esc(s.namn) + '</span></div><div class="sig-text">' + esc(s.fel ? s.fel : (s.symbol ? (s.hamtad ? 'Hämtat ' + fmtTime(s.hamtad) : 'Inte hämtat ännu') : (s.kursDatum ? 'Manuell kurs från ' + fmtDate(s.kursDatum) : 'Kursdatum saknas'))) + '</div></div></li>').join('') + '</ul></section>' : '') +
     '<p class="hint center">Signalerna räknas om varje gång kurser och nyckeltal hämtas eller när du ändrar något.</p>';
+}
+
+function renderFacit() {
+  const today = todayISO();
+  if (!state.logg.length) {
+    return '<div class="card empty">' + compassIcon() + '<h2>Facit kommer med tiden</h2><p>Varje gång kurser hämtas antecknar appen vilket beslut den gav för varje aktie och till vilken kurs. Här ser du sedan hur kursen gick efter varje köp- och säljråd, en vecka, en månad och tre månader senare.</p></div>';
+  }
+  const events = facitEvents();
+  ensureHistory(events);
+  const first = state.logg.map(e => e.d).sort()[0];
+  const dagar = daysSince(first) || 0;
+  const horis = [['nu', 'Hittills'], [7, '1 vecka'], [30, '1 månad'], [90, '3 mån']];
+  const stat = {};
+  ['kop', 'salj', 'bevaka', 'behall'].forEach(v => {
+    stat[v] = {};
+    horis.forEach(h => {
+      const rs = [];
+      events.filter(e => e.v === v && e.d !== today).forEach(e => { const r = h[0] === 'nu' ? utfallNu(e) : utfall(e, h[0]); if (isNum(r)) rs.push(r); });
+      stat[v][h[0]] = { n: rs.length, avg: rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length * 100 : null, hit: rs.length ? rs.filter(r => v === 'salj' ? r < 0 : r > 0).length / rs.length * 100 : null };
+    });
+  });
+  const tile = (v, label) => {
+    const st = stat[v], best = st[30].n ? st[30] : st.nu, bestLabel = st[30].n ? 'efter 1 mån' : 'hittills';
+    return '<div class="tile"><div class="tile-label">' + label + '</div><div class="tile-value num ' + (best.avg == null ? '' : cls(v === 'salj' ? -best.avg : best.avg)) + '">' + (best.avg == null ? '–' : fmtSigned(best.avg, 1) + ' %') + '</div><div class="tile-sub">' + (best.n ? 'snitt ' + bestLabel + ' · ' + fmt(best.hit, 0) + ' % ' + (v === 'salj' ? 'föll' : 'steg') + ' · ' + best.n + ' råd' : 'inga råd att utvärdera ännu') + '</div></div>';
+  };
+  const cell = r => isNum(r) ? '<span class="' + cls(r) + '">' + fmtSigned(r * 100, 1) + ' %</span>' : '<span class="muted">–</span>';
+  const rows = events.slice(0, 80).map(e => '<tr><td class="w"><b>' + esc(e.t) + '</b><div class="small muted">' + esc(fmtDate(e.d)) + '</div></td><td>' + (e.fran ? '<span class="chip sm ' + e.fran + '">' + esc(verdictLabel(e.fran, true)) + '</span> → ' : '') + '<span class="chip sm ' + e.v + '">' + esc(verdictLabel(e.v, true)) + '</span></td><td class="num r">' + cell(utfallNu(e)) + '</td><td class="num r">' + cell(utfall(e, 7)) + '</td><td class="num r">' + cell(utfall(e, 30)) + '</td><td class="num r">' + cell(utfall(e, 90)) + '</td><td class="num r muted">' + fmt(e.k, 2) + '</td></tr>').join('');
+  const baseline = stat.bevaka.nu.n + stat.behall.nu.n ? 'Som jämförelse: aktier med Bevaka/Behåll har i snitt gått ' + fmtSigned(((stat.bevaka.nu.avg || 0) * stat.bevaka.nu.n + (stat.behall.nu.avg || 0) * stat.behall.nu.n) / (stat.bevaka.nu.n + stat.behall.nu.n), 1) + ' % sedan beslutet.' : '';
+  return '<div class="facit">' +
+    '<section class="summary" style="grid-template-columns:1fr 1fr">' + tile('kop', 'Köpråd') + tile('salj', 'Säljråd') + '</section>' +
+    '<section class="card"><div class="card-head"><h2>Beslut och utfall</h2><span class="hint">' + (histLoading ? '<span class="spinner"></span> hämtar historik…' : 'Loggat sedan ' + esc(fmtDate(first)) + ' · ' + dagar + (dagar === 1 ? ' dag' : ' dagar')) + '</span></div>' +
+      '<p class="lead">Varje rad är ett tillfälle då appens beslut för en aktie ändrades. Utvecklingen räknas från kursen den dagen. ' + baseline + '</p>' +
+      '<div class="table-scroll"><table class="tx"><thead><tr><th>Aktie</th><th>Beslut</th><th class="r">Hittills</th><th class="r">1 v</th><th class="r">1 mån</th><th class="r">3 mån</th><th class="r">Kurs då</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (events.length > 80 ? '<p class="hint">Visar de 80 senaste av ' + events.length + '.</p>' : '') +
+    '</section>' +
+    '<p class="hint center">' + (dagar < 60 ? 'Träffsäkerhet går att bedöma först efter några månader och ett tjugotal råd. ' : '') + 'Loggen sparas bara i den här enheten och följer med i säkerhetskopian.</p>' +
+  '</div>';
 }
 
 function renderRules() {
@@ -1117,7 +1230,7 @@ function confirmSheet(title, text, label, onYes) {
 }
 
 function exportJSON() {
-  const data = JSON.stringify({ app: 'Aktiekompassen', version: 2, exported: new Date().toISOString(), settings: state.settings, stocks: state.stocks }, null, 2);
+  const data = JSON.stringify({ app: 'Aktiekompassen', version: 2, exported: new Date().toISOString(), settings: state.settings, stocks: state.stocks, logg: state.logg }, null, 2);
   const show = (msg) => {
     openSheet('Säkerhetskopia', '<p class="hint">' + esc(msg) + '</p><textarea class="export-area" id="export-area" readonly>' + esc(data) + '</textarea>', null, null, { focus: false });
     const ta = $('#export-area'); if (ta) { ta.focus(); ta.select(); }
@@ -1134,6 +1247,7 @@ function importForm() {
       if (!d || typeof d !== 'object' || !Array.isArray(d.stocks)) return 'Det här ser inte ut som en säkerhetskopia från Aktiekompassen.';
       state.settings = normalizeSettings(d.settings);
       state.stocks = d.stocks.map(s => normalizeStock(s, s && s.id));
+      state.logg = Array.isArray(d.logg) ? d.logg.filter(e => e && e.d && e.id && num(e.k) > 0).map(normalizeLog) : [];
       state.stockId = null;
       store.save(); render(); toast(state.stocks.length + ' aktier inlästa');
       maybeAutoRefresh();
@@ -1180,7 +1294,7 @@ app.addEventListener('change', e => {
   const s = state.stockId ? stockById(state.stockId) : null;
   if (f === 'kurs' && s) {
     const v = parseNum(el.value);
-    if (v != null && v >= 0) { if (v !== s.kurs) { s.kurs = v; s.kursDatum = todayISO(); commitStock(s); toast(s.symbol ? 'Kurs sparad – skrivs över vid nästa hämtning' : 'Kurs sparad'); } else render(); }
+    if (v != null && v >= 0) { if (v !== s.kurs) { s.kurs = v; s.kursDatum = todayISO(); commitStock(s); toast(s.symbol && !s.kallaGammal ? 'Kurs sparad – skrivs över vid nästa hämtning' : 'Kurs sparad'); } else render(); }
     else { render(); toast('Ogiltig kurs'); }
   } else if (f.indexOf('varden.') === 0 && s) {
     const id = f.slice(7), v = parseNum(el.value);
@@ -1259,6 +1373,7 @@ function importFromLink() {
 state.online = navigator.onLine !== false;
 state.view = viewFromHash();
 store.load();
+if (loggaBeslut()) store.save();
 render();
 if (!importFromLink()) maybeAutoRefresh();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
