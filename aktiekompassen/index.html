@@ -310,6 +310,77 @@ dialog::backdrop { background: var(--backdrop); }
   .sheet-body { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
 
+/* Analysmodellen */
+.gauge .z-minska { stroke: var(--watch); opacity: .6; }
+.dims { display: inline-flex; gap: 3px; align-items: flex-end; height: 24px; }
+.dims i { display: block; width: 8px; height: var(--h); border-radius: 2px; background: var(--hold); opacity: .9; }
+.dims i.hi { background: var(--buy); } .dims i.lo { background: var(--sell); } .dims i.mid { background: var(--watch); }
+.dims i.na { background: none; border: 1px dashed var(--line); opacity: 1; }
+.dims.sm { height: 18px; } .dims.sm i { width: 6px; }
+.score-pill { font-size: 13px; font-weight: 500; color: var(--muted); }
+.sc-verdict { width: 84px; }
+.sc-skal { line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tile-unit { font-size: 12px; color: var(--muted); margin-left: 2px; }
+.d-verdict { grid-template-columns: 190px 1fr; grid-template-areas: "gauge text" "dims dims" "regler regler" "hint hint"; }
+.d-verdict .gauge-wrap { grid-area: gauge; } .d-verdict .verdict-text { grid-area: text; } .d-verdict .dims-wrap { grid-area: dims; } .d-verdict .regler-wrap { grid-area: regler; } .d-verdict > .hint { grid-area: hint; }
+@media (max-width: 560px) { .d-verdict { grid-template-columns: 1fr; grid-template-areas: "gauge" "text" "dims" "regler" "hint"; } }
+.skal { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .skal { grid-template-columns: 1fr; } }
+.skal h3, .flaggor h3, .regler-wrap h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.skal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 13.5px; }
+.skal-list li { display: flex; gap: 8px; align-items: baseline; }
+.skal-list .mark { width: 16px; flex: none; font-weight: 800; text-align: center; font-family: var(--font-num); }
+.skal-list .for .mark { color: var(--buy); } .skal-list .emot .mark { color: var(--sell); }
+.skal-list .sub { display: block; font-size: 11.5px; color: var(--muted); }
+.flaggor { background: var(--sell-bg); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+.flaggor h3 { color: var(--sell); }
+.flaggor ul { margin: 0; padding-left: 18px; font-size: 13px; display: grid; gap: 3px; }
+.dims-wrap { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.dim summary { display: grid; grid-template-columns: 1fr 120px 36px; grid-template-areas: "name bar p" "sub sub sub"; align-items: center; gap: 2px 10px; cursor: pointer; padding: 6px 0; list-style: none; }
+.dim summary::-webkit-details-marker { display: none; }
+.dim .dim-name { grid-area: name; font-weight: 600; font-size: 14px; }
+.dim .dim-bar { grid-area: bar; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.dim .dim-bar i { display: block; height: 100%; width: var(--w); background: var(--hold); border-radius: 4px; }
+.dim.hi .dim-bar i { background: var(--buy); } .dim.lo .dim-bar i { background: var(--sell); } .dim.mid .dim-bar i { background: var(--watch); }
+.dim .dim-p { grid-area: p; text-align: right; font-size: 14px; }
+.dim .dim-sub { grid-area: sub; font-size: 11.5px; color: var(--muted); }
+.dim.off { opacity: .55; }
+.dim[open] summary .dim-name::after { content: " ▾"; color: var(--muted); }
+.dim:not([open]) summary .dim-name::after { content: " ▸"; color: var(--muted); }
+.krit-list { list-style: none; margin: 0 0 8px; padding: 0 0 0 4px; display: grid; gap: 6px; font-size: 13px; }
+.krit { display: flex; gap: 8px; align-items: baseline; }
+.krit .k-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hold); flex: none; position: relative; top: 1px; }
+.krit.hi .k-dot { background: var(--buy); } .krit.lo .k-dot { background: var(--sell); } .krit.mid .k-dot { background: var(--watch); } .krit.na .k-dot { background: none; border: 1px dashed var(--line); }
+.krit .k-text { flex: 1; min-width: 0; }
+.krit .k-name { font-weight: 500; }
+.krit .k-sub { display: block; font-size: 11px; color: var(--muted); }
+.krit .k-p { width: 28px; text-align: right; color: var(--muted); font-size: 12px; flex: none; }
+.krit.na .k-name { color: var(--muted); }
+.regler-wrap { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 6px; }
+.hint.spar { color: var(--watch); }
+.beslut { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.beslut-rad { display: grid; grid-template-columns: 92px 1fr auto 36px; grid-template-areas: "chip ticker dims score" "chip skal skal skal"; align-items: center; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.beslut-rad:first-child { border-top: none; }
+.beslut-rad > .chip { grid-area: chip; text-align: center; }
+.beslut-rad .b-ticker { grid-area: ticker; font-weight: 700; }
+.beslut-rad .dims { grid-area: dims; }
+.beslut-rad .b-score { grid-area: score; text-align: right; }
+.beslut-rad .b-skal { grid-area: skal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stilar { display: flex; gap: 6px; flex-wrap: wrap; }
+.vikter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+@media (max-width: 520px) { .vikter { grid-template-columns: 1fr 1fr; } }
+.vikt { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); }
+.vikt input { width: 100%; }
+input.inline { width: 64px; display: inline-block; padding: 4px 6px; margin: 0 4px; }
+.krit-master > summary, .krit-grupp > summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
+.krit-master > summary .dim-name, .krit-grupp > summary .dim-name { font-weight: 600; }
+.krit-grupp { border-top: 1px solid var(--line); }
+.krit-edit { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 10px; }
+.krit-edit li { display: grid; gap: 4px; font-size: 13px; }
+.krit-edit .k-name { font-weight: 600; margin-right: 8px; }
+.ke-in { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted); }
+.ke-in input { width: 70px; padding: 4px 6px; margin: 0 4px; }
+
 /* Toast */
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; z-index: 20; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
 </style>
@@ -343,6 +414,7 @@ const APP_BASE = 'https://pxskckkdftnknqcgpbng.supabase.co/functions/v1/aktiekom
 const API = APP_BASE + '/api';
 const LS_KEY = 'aktiekompassen-v2';
 const HIST_KEY = 'aktiekompassen-hist';
+const ANALYS_KEY = 'aktiekompassen-analys';
 const LISTOR = ['', 'Large Cap', 'Mid Cap', 'Small Cap', 'First North', 'Utländsk', 'Fond/ETF', 'Annan'];
 const OPW = { '<': 'under', '<=': 'högst', '>': 'över', '>=': 'minst' };
 const SIG = { kop: 'Köp', salj: 'Sälj' };
@@ -357,7 +429,113 @@ const KALLOR = {
   skuld: 'Nettoskuld / EBITDA', skuld_ek: 'Skuld / eget kapital (%)', solid: 'Soliditet', ev_ebitda: 'EV / EBITDA',
   utdandel: 'Utdelningsandel av vinsten', hogst52: '52-veckors högsta', lagst52: '52-veckors lägsta',
   riktkurs: 'Riktkurs, analytikersnitt', borsvarde: 'Börsvärde', beta: 'Beta',
+  // Ur den fördjupade analysen (hämtas en gång per dag)
+  peg: 'PEG (P/E ÷ förväntad vinsttillväxt)', ev_ebit: 'EV / EBIT', vinstavkastning: 'Vinstavkastning EBIT/EV (%)', fcf_yield: 'Fritt kassaflöde / börsvärde (%)',
+  graham: 'Graham-tal (kr)', pe_percentil: 'P/E:s percentil i egen 5-årshistorik', pe_median5: 'P/E, egen 5-årsmedian', pe_jamfor: 'P/E, median för liknande bolag',
+  roa: 'Avkastning på tillgångar (ROA)', roic: 'Avkastning på investerat kapital (ROIC)', bruttomarginal: 'Bruttomarginal', marginal_trend: 'Rörelsemarginalens förändring (procentenheter, år)',
+  vinstkvalitet: 'Vinstkvalitet (kassaflöde ÷ vinst)', fscore: 'Piotroski F-score (0–9)', oms_cagr3: 'Omsättningstillväxt 3 år (årstakt)', vpa_cagr3: 'Vinsttillväxt per aktie 3 år (årstakt)',
+  prognos_vinst_i_ar: 'Prognos vinsttillväxt i år', prognos_vinst_nasta_ar: 'Prognos vinsttillväxt nästa år', estimat_90d: 'Vinstestimatens förändring 90 dagar (%)', revideringar_netto: 'Estimatrevideringar netto 30 dagar (upp − ned)', overraskning: 'Snittöverraskning mot estimat (%)',
+  rantetackning: 'Räntetäckningsgrad', balanslikviditet: 'Balanslikviditet', kassalikviditet: 'Kassalikviditet', zscore: 'Altman Z-score', utspadning: 'Utspädning 1 år (%)', skuldtrend: 'Långfristig skuld, förändring 1 år (%)',
+  da_5ar: 'Direktavkastning, 5-årssnitt', utd_tackning: 'Utdelningens täckning av fritt kassaflöde (x)', utd_ar_utan_sankning: 'År i rad utan sänkt utdelning', utd_tillvaxt5: 'Utdelningstillväxt 5 år (årstakt)',
+  ma50: '50-dagars glidande medelvärde', ma200: '200-dagars glidande medelvärde', ma200_riktning: '200-dagars medelvärdets riktning (%)', rsi: 'RSI 14', avk3m: 'Kursutveckling 3 mån', avk12m: 'Kursutveckling 12 mån',
+  rs3m: 'Relativ styrka mot index 3 mån (procentenheter)', rs12m: 'Relativ styrka mot index 12 mån (procentenheter)', volatilitet: 'Volatilitet (årstakt, %)', blankning: 'Blankning (% av fria aktier)',
+  insyn_kop6m: 'Insynsköp 6 mån (antal)', insyn_salj6m: 'Insynsförsäljningar 6 mån (antal)', analytiker_antal: 'Antal analytiker', analytiker_andel_kop: 'Andel analytiker med köp (%)',
 };
+const ANALYS_KALLOR = ['peg', 'ev_ebit', 'vinstavkastning', 'fcf_yield', 'graham', 'pe_percentil', 'pe_median5', 'pe_jamfor', 'roa', 'roic', 'bruttomarginal', 'marginal_trend', 'vinstkvalitet', 'fscore', 'oms_cagr3', 'vpa_cagr3', 'prognos_vinst_i_ar', 'prognos_vinst_nasta_ar', 'estimat_90d', 'revideringar_netto', 'overraskning', 'rantetackning', 'balanslikviditet', 'kassalikviditet', 'zscore', 'utspadning', 'skuldtrend', 'da_5ar', 'utd_tackning', 'utd_ar_utan_sankning', 'utd_tillvaxt5', 'ma50', 'ma200', 'ma200_riktning', 'rsi', 'avk3m', 'avk12m', 'rs3m', 'rs12m', 'volatilitet', 'blankning', 'insyn_kop6m', 'insyn_salj6m', 'analytiker_antal', 'analytiker_andel_kop'];
+
+/* ---------- Analysmodellen: sex dimensioner, kriterier med källa och standardgränser ---------- */
+// Varje kriterium får 0–1 poäng: 1 vid "bra"-gränsen eller bättre, 0 vid "dålig"-gränsen eller sämre, linjärt däremellan.
+// Riktningen följer av gränserna (bra > dålig = högre är bättre). Dimensionen är det viktade snittet × 5.
+// typ: 'band' = bäst inom [bra-intervallet], sämst utanför [dålig-intervallet] (används för RSI).
+const DIMS = [
+  { id: 'V', namn: 'Värdering',            kort: 'Värd.' },
+  { id: 'K', namn: 'Kvalitet & lönsamhet', kort: 'Kval.' },
+  { id: 'T', namn: 'Tillväxt',             kort: 'Tillv.' },
+  { id: 'S', namn: 'Finansiell styrka',    kort: 'Styrka' },
+  { id: 'U', namn: 'Utdelning',            kort: 'Utd.' },
+  { id: 'M', namn: 'Trend & sentiment',    kort: 'Trend' },
+];
+const STILAR = {
+  balanserad: { namn: 'Balanserad',       vikter: { V: 1,   K: 1,   T: 1,    S: 1,    U: 0.5,  M: 1 },    desc: 'Alla dimensioner väger lika, utdelning lite mindre.' },
+  varde:      { namn: 'Värde',            vikter: { V: 2,   K: 1,   T: 0.5,  S: 1,    U: 0.75, M: 0.5 },  desc: 'Graham/Greenblatt: billigt mot vinst och kassaflöde, med sund balansräkning.' },
+  kvalitet:   { namn: 'Kvalitet/Buffett', vikter: { V: 1,   K: 2,   T: 0.75, S: 1.25, U: 0.5,  M: 0.25 }, desc: 'Hög avkastning på kapital, stabila marginaler och låg skuld går före pris.' },
+  tillvaxt:   { namn: 'Tillväxt',         vikter: { V: 0.5, K: 1,   T: 2,    S: 0.75, U: 0,    M: 1 },    desc: 'Lynch: tillväxt i omsättning, vinst och prognoser; utdelning spelar ingen roll.' },
+  utdelning:  { namn: 'Utdelning',        vikter: { V: 1,   K: 1,   T: 0.5,  S: 1.25, U: 2,    M: 0.5 },  desc: 'Direktavkastning, täckning och historik av höjd utdelning väger tyngst.' },
+  momentum:   { namn: 'Momentum',         vikter: { V: 0.5, K: 0.5, T: 1,    S: 0.5,  U: 0,    M: 2 },    desc: 'Minervini: trend, relativ styrka och sentiment styr, fundamenta som stöd.' },
+};
+// Bolagstyper från servern: vanlig, bank, forsakring, finans, investment, fastighet. ej = kriteriet används inte för dessa.
+const FIN = ['bank', 'forsakring', 'finans', 'investment'];
+const KRITERIER = [
+  // Värdering
+  { id: 'v_pehist',  dim: 'V', namn: 'P/E mot egen 5-årshistorik', falt: 'pe_percentil', enhet: 'percentil', dec: 0, bra: 25, dalig: 75, vikt: 1.5, kalla: 'Relativ värdering (Simply Wall St, Börsdata)', desc: 'Var dagens P/E ligger i bolagets egen fördelning senaste fem åren. Låg percentil = billigare än vanligt.' },
+  { id: 'v_pepeers', dim: 'V', namn: 'P/E mot liknande bolag', falt: 'pe_rel_jamfor', enhet: 'x', dec: 2, bra: 0.8, dalig: 1.3, vikt: 1, kalla: 'Simply Wall St (P/E vs peers)', desc: 'Bolagets P/E delat med medianen för de liknande bolag Yahoo listar. Under 1 = billigare än gruppen.' },
+  { id: 'v_peg',     dim: 'V', namn: 'PEG', falt: 'peg', enhet: 'x', dec: 2, bra: 1, dalig: 2, vikt: 1.5, kalla: 'Peter Lynch (PEG < 1 bra, > 2 dyrt)', desc: 'P/E delat med förväntad vinsttillväxt. Väger in tillväxten i priset.' },
+  { id: 'v_fpe',     dim: 'V', namn: 'P/E framåt', falt: 'pe_forward', enhet: 'x', dec: 1, bra: 15, dalig: 35, vikt: 1, kalla: 'Graham (P/E < 15), vanlig praxis', desc: 'Kurs delat med analytikernas vinstprognos för nästa år.' },
+  { id: 'v_evebit',  dim: 'V', namn: 'EV/EBIT', falt: 'ev_ebit', enhet: 'x', dec: 1, bra: 12, dalig: 25, vikt: 1, ej: FIN, kalla: 'Greenblatt, Magic Formula (vinstavkastning EBIT/EV)', desc: 'Bolagsvärde inklusive nettoskuld delat med rörelseresultatet. Oberoende av skuldsättning och skatt.' },
+  { id: 'v_fcfy',    dim: 'V', namn: 'Fritt kassaflöde / börsvärde', falt: 'fcf_yield', enhet: '%', dec: 1, bra: 6, dalig: 2, vikt: 1, ej: FIN, kalla: 'Kassaflödesvärdering (Buffett "owner earnings")', desc: 'Hur mycket fritt kassaflöde du får per krona börsvärde.' },
+  { id: 'v_ps',      dim: 'V', namn: 'P/S', falt: 'ps', enhet: 'x', dec: 1, bra: 1.5, dalig: 6, vikt: 0.5, ej: FIN, kalla: 'Ken Fisher (P/S < 1,5 bra, > 3 dyrt för vanliga bolag)', desc: 'Börsvärde delat med omsättning. Branschberoende – väger därför lätt.' },
+  { id: 'v_pb',      dim: 'V', namn: 'P/B', falt: 'pb', enhet: 'x', dec: 1, bra: 1.5, dalig: 6, vikt: 0.5, kalla: 'Graham (P/B < 1,5)', desc: 'Kurs delat med eget kapital per aktie. Viktigast för banker och investmentbolag (substansrabatt).' },
+  { id: 'v_pb_fin',  dim: 'V', namn: 'P/B (substansvärdering)', falt: 'pb', enhet: 'x', dec: 2, bra: 0.9, dalig: 1.8, vikt: 2, bara: FIN, kalla: 'Standard för banker och investmentbolag', desc: 'Under 1 = handlas med rabatt mot bokfört eget kapital (för investmentbolag ett närmevärde för substansrabatt).' },
+  { id: 'v_graham',  dim: 'V', namn: 'Kurs mot Graham-tal', falt: 'kurs_rel_graham', enhet: 'x', dec: 2, bra: 1, dalig: 2, vikt: 0.5, ej: FIN, kalla: 'Benjamin Graham, √(22,5 × VPA × eget kapital per aktie)', desc: 'Under 1 = kursen är lägre än Grahams försiktiga värde. Slår sällan in för tillväxtbolag.' },
+  { id: 'v_rikt',    dim: 'V', namn: 'Uppsida till riktkurs', falt: 'uppsida', enhet: '%', dec: 0, bra: 25, dalig: 0, vikt: 1, kalla: 'Analytikerkonsensus (Yahoo)', desc: 'Analytikernas genomsnittliga riktkurs mot dagens kurs.' },
+  // Kvalitet & lönsamhet
+  { id: 'k_roe',     dim: 'K', namn: 'Avkastning på eget kapital (ROE)', falt: 'roe', enhet: '%', dec: 1, bra: 15, dalig: 5, vikt: 1.5, kalla: 'Buffett (uthålligt > 15 %)', desc: 'Vinst i förhållande till eget kapital. Meningslös vid negativt eget kapital.' },
+  { id: 'k_roic',    dim: 'K', namn: 'Avkastning på investerat kapital (ROIC)', falt: 'roic', enhet: '%', dec: 1, bra: 15, dalig: 6, vikt: 1.5, ej: FIN, kalla: 'Greenblatt, Magic Formula (hög ROIC)', desc: 'Rörelseresultat efter schablonskatt delat med investerat kapital.' },
+  { id: 'k_marg',    dim: 'K', namn: 'Rörelsemarginal', falt: 'marginal', enhet: '%', dec: 1, bra: 20, dalig: 5, vikt: 0.75, ej: FIN, kalla: 'Buffett (prissättningsmakt)', desc: 'Rörelseresultat delat med omsättning. Branschberoende.' },
+  { id: 'k_brutto',  dim: 'K', namn: 'Bruttomarginal', falt: 'bruttomarginal', enhet: '%', dec: 1, bra: 50, dalig: 20, vikt: 0.5, ej: FIN, kalla: 'Buffett (> 40 % tyder på vallgrav)', desc: 'Bruttoresultat delat med omsättning.' },
+  { id: 'k_margtr',  dim: 'K', namn: 'Marginaltrend', falt: 'marginal_trend', enhet: 'p.e.', dec: 1, bra: 1, dalig: -2, vikt: 1, ej: FIN, kalla: 'Simply Wall St (Past: marginalutveckling)', desc: 'Rörelsemarginalens förändring mot föregående bokslut, i procentenheter.' },
+  { id: 'k_vkval',   dim: 'K', namn: 'Vinstkvalitet', falt: 'vinstkvalitet', enhet: 'x', dec: 2, bra: 1, dalig: 0.6, vikt: 1, ej: FIN, kalla: 'Piotroski (kassaflöde > vinst), Simply Wall St (high quality earnings)', desc: 'Kassaflöde från rörelsen delat med redovisad vinst. Under 1 = vinsten blir inte pengar.' },
+  { id: 'k_fscore',  dim: 'K', namn: 'Piotroski F-score', falt: 'fscore9', enhet: 'av 9', dec: 0, bra: 7, dalig: 3, vikt: 2, ej: FIN, kalla: 'Joseph Piotroski (2000): 8–9 starkt, 0–2 svagt', desc: 'Nio ja/nej-test på lönsamhet, skuld, likviditet, utspädning och effektivitet mellan de två senaste boksluten.' },
+  { id: 'k_roe_fin', dim: 'K', namn: 'ROE (finansbolag)', falt: 'roe', enhet: '%', dec: 1, bra: 12, dalig: 6, vikt: 2, bara: FIN, kalla: 'Standard för banker: ROE 10–15 %', desc: 'För banker och försäkringsbolag är ROE det centrala lönsamhetsmåttet.' },
+  // Tillväxt
+  { id: 't_oms_q',   dim: 'T', namn: 'Omsättningstillväxt, senaste kvartal', falt: 'oms_tillv', enhet: '%', dec: 1, bra: 15, dalig: 0, vikt: 1, kalla: 'Lynch, CAN SLIM (kvartalsvis tillväxt)', desc: 'Senaste kvartalet mot samma kvartal i fjol.' },
+  { id: 't_vinst_q', dim: 'T', namn: 'Vinsttillväxt, senaste kvartal', falt: 'tillv', enhet: '%', dec: 1, bra: 15, dalig: 0, vikt: 1, kalla: "O'Neil, CAN SLIM (C = current earnings)", desc: 'Senaste kvartalet mot samma kvartal i fjol.' },
+  { id: 't_oms_3',   dim: 'T', namn: 'Omsättningstillväxt 3 år', falt: 'oms_cagr3', enhet: '%/år', dec: 1, bra: 12, dalig: 2, vikt: 1, kalla: 'Lynch (10–20 % per år är lagom)', desc: 'Årlig tillväxttakt över de tre senaste boksluten.' },
+  { id: 't_vpa_3',   dim: 'T', namn: 'Vinsttillväxt per aktie 3 år', falt: 'vpa_cagr3', enhet: '%/år', dec: 1, bra: 12, dalig: 0, vikt: 1, kalla: "O'Neil, CAN SLIM (A = annual earnings)", desc: 'Årlig tillväxt i vinst per aktie över tre bokslut.' },
+  { id: 't_prog0',   dim: 'T', namn: 'Prognos vinsttillväxt i år', falt: 'prognos_vinst_i_ar', enhet: '%', dec: 1, bra: 15, dalig: 0, vikt: 1, kalla: 'Analytikerkonsensus (Yahoo earningsTrend)', desc: 'Förväntad vinsttillväxt innevarande räkenskapsår.' },
+  { id: 't_prog1',   dim: 'T', namn: 'Prognos vinsttillväxt nästa år', falt: 'prognos_vinst_nasta_ar', enhet: '%', dec: 1, bra: 12, dalig: 0, vikt: 1.5, kalla: 'Analytikerkonsensus, Simply Wall St (Future)', desc: 'Förväntad vinsttillväxt nästa räkenskapsår.' },
+  { id: 't_rev90',   dim: 'T', namn: 'Vinstrevideringar 90 dagar', falt: 'estimat_90d', enhet: '%', dec: 1, bra: 3, dalig: -3, vikt: 0.75, kalla: 'Estimatrevideringar (Zacks Rank-logik)', desc: 'Hur mycket årets vinstestimat ändrats senaste tre månaderna.' },
+  { id: 't_rev30',   dim: 'T', namn: 'Revideringar upp − ned, 30 dagar', falt: 'revideringar_netto', enhet: 'st', dec: 0, bra: 3, dalig: -3, vikt: 0.75, kalla: 'Estimatrevideringar (Zacks Rank-logik)', desc: 'Antal höjda minus sänkta estimat för i år och nästa år.' },
+  { id: 't_surpr',   dim: 'T', namn: 'Överraskningar mot estimat', falt: 'overraskning', enhet: '%', dec: 1, bra: 3, dalig: -1, vikt: 0.75, kalla: 'Rapportöverraskningar, senaste fyra kvartalen', desc: 'Snittavvikelse mellan rapporterad vinst och förväntad.' },
+  // Finansiell styrka
+  { id: 's_nd',      dim: 'S', namn: 'Nettoskuld / EBITDA', falt: 'skuld_eff', enhet: 'x', dec: 1, bra: 1, dalig: 3, vikt: 1.5, ej: FIN, kalla: 'Vanlig gräns < 2–3; Simply Wall St (Health)', desc: 'Nettoskuld i förhållande till rörelseresultat före avskrivningar. Nettokassa räknas som bäst.' },
+  { id: 's_de',      dim: 'S', namn: 'Skuldsättningsgrad', falt: 'skuld_ek', enhet: '%', dec: 0, bra: 50, dalig: 150, vikt: 1, ej: FIN, kalla: 'Simply Wall St (debt to equity < 40 % bra)', desc: 'Räntebärande skulder delat med eget kapital.' },
+  { id: 's_solid',   dim: 'S', namn: 'Soliditet', falt: 'solid', enhet: '%', dec: 0, bra: 40, dalig: 15, vikt: 1, ej: FIN, kalla: 'Svensk praxis (> 30–40 % starkt)', desc: 'Eget kapital delat med totala tillgångar.' },
+  { id: 's_solid_fin', dim: 'S', namn: 'Soliditet (finansbolag)', falt: 'solid', enhet: '%', dec: 1, bra: 7, dalig: 4, vikt: 2, bara: FIN, kalla: 'Bankpraxis (eget kapital/tillgångar 5–8 %)', desc: 'För banker är låg soliditet normalt; här bedöms den mot banknivåer.' },
+  { id: 's_ranta',   dim: 'S', namn: 'Räntetäckningsgrad', falt: 'rantetackning', enhet: 'x', dec: 1, bra: 8, dalig: 3, vikt: 1, ej: FIN, kalla: 'Simply Wall St (EBIT täcker räntan > 3–5 gånger)', desc: 'Rörelseresultat delat med räntekostnader.' },
+  { id: 's_cr',      dim: 'S', namn: 'Balanslikviditet', falt: 'balanslikviditet', enhet: 'x', dec: 2, bra: 1.5, dalig: 1, vikt: 1, ej: FIN, kalla: 'Graham (> 1,5–2)', desc: 'Omsättningstillgångar delat med kortfristiga skulder.' },
+  { id: 's_trend',   dim: 'S', namn: 'Skuldens trend', falt: 'skuldtrend', enhet: '%', dec: 0, bra: -5, dalig: 20, vikt: 0.5, ej: FIN, kalla: 'Piotroski (minskande skuldsättning)', desc: 'Långfristig skuld nu mot föregående bokslut.' },
+  { id: 's_z',       dim: 'S', namn: 'Altman Z-score', falt: 'zscore', enhet: '', dec: 2, bra: 3, dalig: 1.8, vikt: 1.5, ej: FIN, kalla: 'Edward Altman (1968): > 2,99 säker zon, < 1,81 riskzon', desc: 'Konkursriskmått byggt på rörelsekapital, balanserade vinster, EBIT, börsvärde och omsättning.' },
+  { id: 's_utsp',    dim: 'S', namn: 'Utspädning 1 år', falt: 'utspadning', enhet: '%', dec: 1, bra: 0, dalig: 5, vikt: 1, kalla: 'Piotroski (ingen nyemission)', desc: 'Förändring av antalet aktier senaste året. Negativt = återköp.' },
+  // Utdelning
+  { id: 'u_da',      dim: 'U', namn: 'Direktavkastning', falt: 'da', enhet: '%', dec: 2, bra: 4, dalig: 1, vikt: 1.5, kalla: 'Utdelningsinvesterare; Simply Wall St (yield vs market)', desc: 'Årlig utdelning delat med kurs.' },
+  { id: 'u_da_hist', dim: 'U', namn: 'Direktavkastning mot egen historik', falt: 'da_rel_5ar', enhet: 'x', dec: 2, bra: 1.2, dalig: 0.8, vikt: 1, kalla: 'Relativ direktavkastning (egen 5-årssnitt)', desc: 'Dagens direktavkastning delat med bolagets 5-årssnitt. Över 1 = högre än vanligt.' },
+  { id: 'u_andel',   dim: 'U', namn: 'Utdelningsandel', falt: 'utdandel', enhet: '%', dec: 0, bra: 50, dalig: 80, vikt: 1, ej: ['fastighet'], kalla: 'Utdelningsinvesterare (< 60–70 % hållbart)', desc: 'Andel av vinsten som delas ut.' },
+  { id: 'u_andel_f', dim: 'U', namn: 'Utdelningsandel (fastighet/REIT)', falt: 'utdandel', enhet: '%', dec: 0, bra: 90, dalig: 120, vikt: 1, bara: ['fastighet'], kalla: 'REIT-praxis (andel av förvaltningsresultat)', desc: 'Fastighetsbolag delar normalt ut en större del av resultatet.' },
+  { id: 'u_fcf',     dim: 'U', namn: 'Täckning av fritt kassaflöde', falt: 'utd_tackning', enhet: 'x', dec: 1, bra: 2, dalig: 1, vikt: 1, ej: FIN, kalla: 'Simply Wall St (dividend covered by cash flow)', desc: 'Fritt kassaflöde delat med utbetald utdelning.' },
+  { id: 'u_ar',      dim: 'U', namn: 'År utan sänkt utdelning', falt: 'utd_ar_utan_sankning', enhet: 'år', dec: 0, bra: 10, dalig: 2, vikt: 1, kalla: 'Dividend Aristocrats-logik (stabil/höjd utdelning)', desc: 'Antal kalenderår i rad med höjd eller bibehållen utdelning.' },
+  { id: 'u_tillv',   dim: 'U', namn: 'Utdelningstillväxt 5 år', falt: 'utd_tillvaxt5', enhet: '%/år', dec: 1, bra: 7, dalig: 0, vikt: 1, kalla: 'Utdelningstillväxt-investerare (Chowder-regeln)', desc: 'Årlig tillväxttakt i utdelning per aktie över fem år.' },
+  // Trend & sentiment
+  { id: 'm_ma200',   dim: 'M', namn: 'Kurs mot 200-dagars', falt: 'kurs_rel_ma200', enhet: '%', dec: 1, bra: 5, dalig: -5, vikt: 1.5, kalla: 'Minervini trendmall (kurs över MA200)', desc: 'Kursens avstånd till 200-dagars glidande medelvärde.' },
+  { id: 'm_ma50',    dim: 'M', namn: 'Kurs mot 50-dagars', falt: 'kurs_rel_ma50', enhet: '%', dec: 1, bra: 2, dalig: -5, vikt: 1, kalla: 'Minervini trendmall (kurs över MA50)', desc: 'Kursens avstånd till 50-dagars glidande medelvärde.' },
+  { id: 'm_ma200dir', dim: 'M', namn: '200-dagars riktning', falt: 'ma200_riktning', enhet: '%', dec: 1, bra: 2, dalig: -2, vikt: 1, kalla: 'Minervini (MA200 stigande minst en månad)', desc: 'Hur 200-dagarsmedelvärdet ändrats de senaste två månaderna.' },
+  { id: 'm_cross',   dim: 'M', namn: '50-dagars mot 200-dagars', falt: 'ma50_rel_ma200', enhet: '%', dec: 1, bra: 2, dalig: -2, vikt: 0.5, kalla: 'Gyllene kors / dödskors', desc: 'Positivt när det korta medelvärdet ligger över det långa.' },
+  { id: 'm_52h',     dim: 'M', namn: 'Avstånd från 52-veckorshögsta', falt: 'fran52h', enhet: '%', dec: 1, bra: -10, dalig: -35, vikt: 1, kalla: 'Minervini (inom 25 % från årshögsta)', desc: 'Negativt tal = under toppen.' },
+  { id: 'm_52l',     dim: 'M', namn: 'Avstånd från 52-veckorslägsta', falt: 'fran52l', enhet: '%', dec: 1, bra: 30, dalig: 5, vikt: 0.5, kalla: 'Minervini (minst 30 % över årslägsta)', desc: 'Hur långt kursen lyft från årets botten.' },
+  { id: 'm_rs3',     dim: 'M', namn: 'Relativ styrka 3 mån', falt: 'rs3m', enhet: 'p.e.', dec: 1, bra: 5, dalig: -10, vikt: 1, kalla: "O'Neil (relative strength), Minervini", desc: 'Kursutveckling minus index (OMXSPI, S&P 500 m.fl.) senaste tre månaderna.' },
+  { id: 'm_rs12',    dim: 'M', namn: 'Relativ styrka 12 mån', falt: 'rs12m', enhet: 'p.e.', dec: 1, bra: 10, dalig: -10, vikt: 1, kalla: 'Momentum (Jegadeesh & Titman, 12-månaders)', desc: 'Kursutveckling minus index senaste tolv månaderna.' },
+  { id: 'm_rsi',     dim: 'M', namn: 'RSI 14', falt: 'rsi', enhet: '', dec: 0, typ: 'band', bra: [50, 70], dalig: [30, 85], vikt: 0.5, kalla: 'Wilder, RSI (30 översålt, 70 överköpt)', desc: 'Bäst i en sund uppåttrend (50–70); lågt = översålt, mycket högt = överhettat.' },
+  { id: 'm_insyn',   dim: 'M', namn: 'Insynshandel 6 mån', falt: 'insyn_netto', enhet: 'st', dec: 0, bra: 2, dalig: -3, vikt: 1, kalla: 'Insynstransaktioner (Yahoo, mest USA-bolag)', desc: 'Antal insynsköp minus försäljningar senaste halvåret.' },
+  { id: 'm_short',   dim: 'M', namn: 'Blankning', falt: 'blankning', enhet: '%', dec: 1, bra: 2, dalig: 10, vikt: 0.5, kalla: 'Short interest (där Yahoo har det)', desc: 'Andel av fria aktier som är blankade.' },
+  { id: 'm_rek',     dim: 'M', namn: 'Analytiker med köp', falt: 'analytiker_andel_kop', enhet: '%', dec: 0, bra: 70, dalig: 40, vikt: 0.75, kalla: 'Rekommendationstrend (Yahoo)', desc: 'Andel av analytikerna med köp eller stark köp.' },
+  { id: 'm_rektr',   dim: 'M', namn: 'Rekommendationstrend 3 mån', falt: 'rek_trend', enhet: 'p.e.', dec: 0, bra: 5, dalig: -10, vikt: 0.75, kalla: 'Rekommendationstrend (Yahoo)', desc: 'Förändring av köpandelen mot för tre månader sedan.' },
+];
+const KRIT_BY_ID = {}; KRITERIER.forEach(k => { KRIT_BY_ID[k.id] = k; });
+const DEFAULT_MODELL = { stil: 'balanserad', vikter: Object.assign({}, STILAR.balanserad.vikter), troskel: { kop: 70, behall: 50, minska: 35 }, spar: true, sparNiva: 2.5, granser: {}, version: 1 };
+const VERDICTS = {
+  kop_mer: 'Köp mer', behall: 'Behåll', minska: 'Minska', salj: 'Sälj', kop: 'Köp', avvakta: 'Avvakta', undvik: 'Undvik', bevaka: 'Bevaka', saknas: 'Saknar data',
+};
+const KOPSIDA = ['kop', 'kop_mer'], SALJSIDA = ['salj', 'minska', 'undvik'];
 
 const BUILTIN = [
   { id: 'kurs',    namn: 'Kurs',                        enhet: 'kr', dec: 2, auto: true, desc: 'Senaste kurs' },
@@ -387,22 +565,23 @@ const DEFAULT_SETTINGS = {
     { id: 'hogst52',  namn: '52-veckors högsta',           enhet: 'kr', dec: 2, kalla: 'hogst52',   grupp: 'Kurs' },
     { id: 'lagst52',  namn: '52-veckors lägsta',           enhet: 'kr', dec: 2, kalla: 'lagst52',   grupp: 'Kurs' },
   ],
+  // Egna regler justerar modellens poäng (±4 per viktsteg). Värdering, lönsamhet, tillväxt, skuld och
+  // riktkurs ingår i analysmodellen och behöver inga regler – kvar är det som bara du kan avgöra: portfölj och GAV.
   rules: [
-    { id: 'r1',  metric: 'pe',      op: '<',  value: 15,  signal: 'kop',  vikt: 2, aktiv: true, namn: 'Lågt värderad' },
-    { id: 'r2',  metric: 'pe',      op: '>',  value: 30,  signal: 'salj', vikt: 2, aktiv: true, namn: 'Högt värderad' },
-    { id: 'r3',  metric: 'da',      op: '>=', value: 4,   signal: 'kop',  vikt: 1, aktiv: true, namn: 'Hög utdelning' },
     { id: 'r4',  metric: 'utv_gav', op: '<',  value: -20, signal: 'kop',  vikt: 1, aktiv: true, namn: 'Öka på nedgång' },
     { id: 'r5',  metric: 'utv_gav', op: '>',  value: 50,  signal: 'salj', vikt: 1, aktiv: true, namn: 'Ta hem vinst' },
     { id: 'r6',  metric: 'vikt',    op: '>',  value: 25,  signal: 'salj', vikt: 2, aktiv: true, namn: 'För stor andel' },
-    { id: 'r7',  metric: 'solid',   op: '<',  value: 30,  signal: 'salj', vikt: 1, aktiv: true, namn: 'Svag balansräkning' },
-    { id: 'r8',  metric: 'tillv',   op: '>',  value: 10,  signal: 'kop',  vikt: 1, aktiv: true, namn: 'Växande vinst' },
-    { id: 'r9',  metric: 'tillv',   op: '<',  value: 0,   signal: 'salj', vikt: 1, aktiv: true, namn: 'Fallande vinst' },
     { id: 'r10', metric: 'fran52h', op: '<',  value: -25, signal: 'kop',  vikt: 1, aktiv: true, namn: 'Långt under toppen' },
-    { id: 'r11', metric: 'uppsida', op: '>',  value: 20,  signal: 'kop',  vikt: 1, aktiv: true, namn: 'Analytiker ser uppsida' },
-    { id: 'r12', metric: 'skuld',   op: '>',  value: 3,   signal: 'salj', vikt: 1, aktiv: true, namn: 'Hög skuldsättning' },
   ],
   kopTroskel: 50,
   saljTroskel: 50,
+  modell: DEFAULT_MODELL,
+};
+// Regler från den gamla standarduppsättningen som analysmodellen nu täcker; tas bort vid uppgradering om de är oförändrade.
+const GAMLA_REGLER = {
+  r1: { metric: 'pe', op: '<', value: 15, signal: 'kop' }, r2: { metric: 'pe', op: '>', value: 30, signal: 'salj' }, r3: { metric: 'da', op: '>=', value: 4, signal: 'kop' },
+  r7: { metric: 'solid', op: '<', value: 30, signal: 'salj' }, r8: { metric: 'tillv', op: '>', value: 10, signal: 'kop' }, r9: { metric: 'tillv', op: '<', value: 0, signal: 'salj' },
+  r11: { metric: 'uppsida', op: '>', value: 20, signal: 'kop' }, r12: { metric: 'skuld', op: '>', value: 3, signal: 'salj' },
 };
 
 /* Exempelinnehav som visas första gången. Antal och GAV är påhittade; kurser och nyckeltal hämtas på riktigt. */
@@ -462,13 +641,39 @@ function normalizeMetric(m) {
   if (m.grupp) out.grupp = String(m.grupp);
   return out;
 }
+const numIn = (v, lo, hi, def) => { const n = num(v); return n == null ? def : Math.max(lo, Math.min(hi, n)); };
+function normalizeModell(raw) {
+  const m = clone(DEFAULT_MODELL);
+  if (!raw || typeof raw !== 'object') return m;
+  if (STILAR[raw.stil] || raw.stil === 'egen') m.stil = raw.stil;
+  if (raw.vikter && typeof raw.vikter === 'object') DIMS.forEach(d => { m.vikter[d.id] = numIn(raw.vikter[d.id], 0, 3, m.vikter[d.id]); });
+  if (raw.troskel && typeof raw.troskel === 'object') { m.troskel.kop = numIn(raw.troskel.kop, 1, 100, 70); m.troskel.behall = numIn(raw.troskel.behall, 1, 100, 50); m.troskel.minska = numIn(raw.troskel.minska, 0, 100, 35); }
+  if (m.troskel.behall > m.troskel.kop) m.troskel.behall = m.troskel.kop; if (m.troskel.minska > m.troskel.behall) m.troskel.minska = m.troskel.behall;
+  m.spar = raw.spar !== false;
+  m.sparNiva = numIn(raw.sparNiva, 0, 5, 2.5);
+  if (raw.granser && typeof raw.granser === 'object') Object.keys(raw.granser).forEach(id => {
+    const k = KRIT_BY_ID[id], g = raw.granser[id];
+    if (!k || !g || typeof g !== 'object') return;
+    if (k.typ === 'band') return; // band-gränser ändras inte i appen
+    const bra = num(g.bra), dalig = num(g.dalig);
+    if (bra == null || dalig == null || bra === dalig) return;
+    if ((bra > dalig) !== (k.bra > k.dalig)) return; // riktningen får inte vändas
+    m.granser[id] = { bra, dalig };
+  });
+  return m;
+}
 function normalizeSettings(raw) {
   const s = clone(DEFAULT_SETTINGS);
   if (!raw || typeof raw !== 'object') return s;
   if (Array.isArray(raw.metrics)) s.metrics = raw.metrics.filter(m => m && m.id && m.namn).map(normalizeMetric);
-  if (Array.isArray(raw.rules)) s.rules = raw.rules.filter(r => r && r.metric).map(normalizeRule);
+  if (Array.isArray(raw.rules)) {
+    s.rules = raw.rules.filter(r => r && r.metric).map(normalizeRule);
+    // Uppgradering från regelmodellen: standardregler som modellen täcker tas bort om de är orörda.
+    if (!raw.modell) s.rules = s.rules.filter(r => { const g = GAMLA_REGLER[r.id]; return !(g && g.metric === r.metric && g.op === r.op && g.value === r.value && g.signal === r.signal); });
+  }
   s.kopTroskel = clampInt(raw.kopTroskel, 1, 100, s.kopTroskel);
   s.saljTroskel = clampInt(raw.saljTroskel, 1, 100, s.saljTroskel);
+  s.modell = normalizeModell(raw.modell);
   return s;
 }
 function normalizeStock(raw, id) {
@@ -510,13 +715,14 @@ function normalizeLog(e) { return { d: String(e.d || ''), id: String(e.id || '')
 
 /* ---------- Tillstånd & lagring (bara i den här enheten) ---------- */
 const VIEWS = ['portfolj', 'signaler', 'regler', 'facit'];
-const state = { view: 'portfolj', stockId: null, settings: clone(DEFAULT_SETTINGS), stocks: [], logg: [], hist: {}, progress: null, online: true };
+const state = { view: 'portfolj', stockId: null, settings: clone(DEFAULT_SETTINGS), stocks: [], logg: [], hist: {}, analys: {}, progress: null, online: true, uppgraderad: false };
 const stockById = id => state.stocks.find(s => s.id === id) || null;
 const store = {
   load() {
     let data = null;
     try { const raw = localStorage.getItem(LS_KEY); if (raw) data = JSON.parse(raw); } catch (e) { data = null; }
     if (data && typeof data === 'object') {
+      state.uppgraderad = !!(data.settings && !data.settings.modell && Array.isArray(data.settings.rules) && data.settings.rules.some(r => r && GAMLA_REGLER[r.id]));
       state.settings = normalizeSettings(data.settings);
       state.stocks = Array.isArray(data.stocks) ? data.stocks.map(s => normalizeStock(s, s && s.id)) : [];
       state.logg = Array.isArray(data.logg) ? data.logg.filter(e => e && e.d && e.id && num(e.k) > 0).map(normalizeLog) : [];
@@ -524,9 +730,17 @@ const store = {
       state.stocks = EXAMPLES.map(s => normalizeStock(s, s.id));
     }
     try { const h = localStorage.getItem(HIST_KEY); state.hist = h ? (JSON.parse(h) || {}) : {}; } catch (e) { state.hist = {}; }
+    try { const a = localStorage.getItem(ANALYS_KEY); state.analys = a ? (JSON.parse(a) || {}) : {}; } catch (e) { state.analys = {}; }
+    if (!state.analys || typeof state.analys !== 'object') state.analys = {};
   },
-  save() { try { localStorage.setItem(LS_KEY, JSON.stringify({ version: 2, settings: state.settings, stocks: state.stocks, logg: state.logg, saved: new Date().toISOString() })); } catch (e) { toast('Kunde inte spara i webbläsarens lagring'); } },
+  save() { try { localStorage.setItem(LS_KEY, JSON.stringify({ version: 3, settings: state.settings, stocks: state.stocks, logg: state.logg, saved: new Date().toISOString() })); } catch (e) { toast('Kunde inte spara i webbläsarens lagring'); } },
   saveHist() { try { localStorage.setItem(HIST_KEY, JSON.stringify(state.hist)); } catch (e) { /* får inte plats – facit räknar då bara "hittills" */ } },
+  saveAnalys() {
+    // Bara analyser för aktier som finns kvar sparas, så att lagringen inte växer.
+    const keep = {}; state.stocks.forEach(s => { if (s.symbol && state.analys[s.symbol]) keep[s.symbol] = state.analys[s.symbol]; });
+    state.analys = keep;
+    try { localStorage.setItem(ANALYS_KEY, JSON.stringify(keep)); } catch (e) { /* får inte plats – analysen hämtas om nästa gång */ }
+  },
 };
 function commitStock(s) { s.updatedAt = new Date().toISOString(); loggaBeslut(); store.save(); render(); }
 function commitSettings() { loggaBeslut(); store.save(); render(); }
@@ -571,11 +785,40 @@ function applyQuote(s, q) {
   s.fel = null;
   s.varning = q.varning || (s.kallaGammal ? 'Yahoo har ingen kurs nyare än ' + fmtDate(tidDatum) + '. Skriv in kursen själv så behålls den tills källan hinner ikapp.' : null);
 }
+// Fördjupad analys (sex dimensioner) hämtas en gång per dag per aktie och sparas lokalt.
+function analysFor(s) { const a = s && s.symbol ? state.analys[s.symbol] : null; return a && a.data ? a : null; }
+function analysFarsk(a) { return !!(a && a.hamtad && String(a.hamtad).slice(0, 10) === todayISO()); }
+function applyAnalys(s, a) {
+  // Nyckeltal som bara finns i den fördjupade analysen fylls i här (de från kurshämtningen vinner).
+  const v = (a && a.varden) || {};
+  state.settings.metrics.forEach(m => {
+    if (!m.kalla || s.las[m.id] || ANALYS_KALLOR.indexOf(m.kalla) < 0) return;
+    const x = v[m.kalla];
+    if (isNum(x)) s.varden[m.id] = round4(x); else delete s.varden[m.id];
+  });
+}
+async function hamtaAnalys(s, force) {
+  if (!s.symbol) return null;
+  const cur = state.analys[s.symbol];
+  if (!force && analysFarsk(cur)) return cur;
+  try {
+    const data = await api('/analys', { symbol: s.symbol });
+    state.analys[s.symbol] = { hamtad: new Date().toISOString(), data };
+    s.analysFel = null;
+    applyAnalys(s, data);
+    store.saveAnalys();
+    return state.analys[s.symbol];
+  } catch (e) {
+    s.analysFel = String(e.message || e);
+    return cur || null;
+  }
+}
 let refreshing = false;
-async function refreshStock(id) {
+async function refreshStock(id, opts) {
+  opts = opts || {};
   const s = stockById(id);
   if (!s || !s.symbol) return;
-  try { const q = await api('/aktie', { symbol: s.symbol }); const cur = stockById(id); if (cur) { applyQuote(cur, q); commitStock(cur); } }
+  try { const q = await api('/aktie', { symbol: s.symbol }); const cur = stockById(id); if (cur) { applyQuote(cur, q); if (!opts.skipAnalys) await hamtaAnalys(cur, opts.forceAnalys); commitStock(cur); } }
   catch (e) { const cur = stockById(id); if (cur) { cur.fel = String(e.message || e); commitStock(cur); } throw e; }
 }
 async function refreshAll(opts) {
@@ -588,7 +831,7 @@ async function refreshAll(opts) {
   render();
   let ok = 0; const fel = [];
   for (const s0 of list) {
-    try { await refreshStock(s0.id); ok++; } catch (e) { fel.push(s0.ticker); }
+    try { await refreshStock(s0.id, { forceAnalys: !!opts.forceAnalys }); ok++; } catch (e) { fel.push(s0.ticker); }
     state.progress = { done: state.progress.done + 1, total: list.length };
     renderStatus();
   }
@@ -597,7 +840,9 @@ async function refreshAll(opts) {
   loggaBeslut();
   store.save();
   render();
+  const analysFel = list.filter(s => s.analysFel).length;
   if (fel.length) toast(ok + ' uppdaterade · gick inte: ' + fel.join(', '));
+  else if (analysFel) toast(ok + ' uppdaterade · analysen gick inte att hämta för ' + analysFel);
   else if (!opts.silent || ok) toast(ok + (ok === 1 ? ' aktie uppdaterad' : ' aktier uppdaterade'));
 }
 function maybeAutoRefresh() {
@@ -658,9 +903,136 @@ function evaluate(s, ctx) {
   return { rows, kop, kopDen, salj, saljDen, kopShare, saljShare, score, verdict, triggered };
 }
 function verdictLabel(v, owned) {
-  return { kop: 'Köp', salj: owned ? 'Sälj' : 'Undvik', bevaka: 'Bevaka', behall: owned ? 'Behåll' : 'Avvakta', saknas: 'Saknar data' }[v] || v;
+  // Gamla loggrader använder kop/salj/behall för både ägda och bevakade; nya beslut har egna id:n.
+  if (v === 'kop') return 'Köp'; if (v === 'salj') return owned ? 'Sälj' : 'Undvik'; if (v === 'behall') return owned ? 'Behåll' : 'Avvakta';
+  return VERDICTS[v] || v;
 }
-function evalAll() { const ctx = ctxFor(state.stocks); return state.stocks.map(s => ({ stock: s, ev: evaluate(s, ctx), ctx })); }
+const verdictClass = v => KOPSIDA.indexOf(v) >= 0 ? 'kop' : SALJSIDA.indexOf(v) >= 0 ? 'salj' : v === 'bevaka' ? 'bevaka' : v === 'saknas' ? 'saknas' : 'behall';
+
+/* ---------- Analysmodellen: poäng per kriterium, dimension och totalt ---------- */
+function kritGrans(k) { const g = state.settings.modell.granser[k.id]; return g ? { bra: g.bra, dalig: g.dalig } : { bra: k.bra, dalig: k.dalig }; }
+// Vinstbaserade mått som hoppas över när källan flaggat vinsten som orimlig (engångspost eller datafel).
+const VINSTFALT = ['pe_percentil', 'pe_rel_jamfor', 'peg', 'kurs_rel_graham', 'roe', 'roic', 'marginal_trend', 'vinstkvalitet', 'tillv', 'vpa_cagr3', 'ev_ebit', 'vinstavkastning'];
+// Mått som räknas om när appens kurs är nyare än källans (t.ex. när källan släpar och du skrivit in kursen själv).
+const KURSFALT = { pe: 1, pe_forward: 1, peg: 1, ps: 1, pb: 1, ev_ebit: 1, fcf_yield: -1, da: -1 };
+function analysVarden(s, a) {
+  if (!a || !a.varden) return {};
+  const kursGammal = a.kursGammal || (a.opalitlig && a.opalitlig.indexOf('kurs') >= 0);
+  if (!kursGammal || !(a.kurs > 0) || !(s.kurs > 0) || Math.abs(s.kurs / a.kurs - 1) < 0.005) return a.varden;
+  const f = s.kurs / a.kurs, v = Object.assign({}, a.varden);
+  Object.keys(KURSFALT).forEach(k => { if (isNum(v[k])) v[k] = KURSFALT[k] > 0 ? v[k] * f : v[k] / f; });
+  v._omraknad = true;
+  return v;
+}
+// Härledda fält som modellen behöver utöver serverns värden.
+function kritFalt(s, a, ctx, falt) {
+  const v = analysVarden(s, a);
+  if (a && a.opalitlig && a.opalitlig.indexOf('vinst') >= 0 && VINSTFALT.indexOf(falt) >= 0) return null;
+  switch (falt) {
+    case 'pe_rel_jamfor': return isNum(v.pe) && isNum(v.pe_jamfor) && v.pe_jamfor > 0 && v.pe > 0 ? v.pe / v.pe_jamfor : null;
+    case 'kurs_rel_graham': return isNum(v.graham) && v.graham > 0 && s.kurs > 0 ? s.kurs / v.graham : null;
+    case 'uppsida': return metricValue(s, 'uppsida', ctx) ?? (isNum(v.uppsida) ? v.uppsida : null);
+    case 'fscore9': return isNum(v.fscore) && isNum(v.fscore_av) && v.fscore_av >= 5 ? v.fscore / v.fscore_av * 9 : null;
+    case 'skuld_eff': if (isNum(v.skuld)) return v.skuld; return v.nettokassa === true ? -0.5 : null;
+    case 'roe': return isNum(v.roe) && (!isNum(v.solid) || v.solid > 0) ? v.roe : null;
+    case 'da': return isNum(v.da) ? v.da : (metricValue(s, 'da', ctx) ?? null);
+    case 'da_rel_5ar': { const da = isNum(v.da) ? v.da : metricValue(s, 'da', ctx); return isNum(da) && da > 0 && isNum(v.da_5ar) && v.da_5ar > 0 ? da / v.da_5ar : null; }
+    case 'utdandel': return isNum(v.utdandel) && v.utdandel > 0 ? v.utdandel : null;
+    case 'kurs_rel_ma200': return isNum(v.ma200) && v.ma200 > 0 && s.kurs > 0 ? (s.kurs / v.ma200 - 1) * 100 : null;
+    case 'kurs_rel_ma50': return isNum(v.ma50) && v.ma50 > 0 && s.kurs > 0 ? (s.kurs / v.ma50 - 1) * 100 : null;
+    case 'ma50_rel_ma200': return isNum(v.ma50) && isNum(v.ma200) && v.ma200 > 0 ? (v.ma50 / v.ma200 - 1) * 100 : null;
+    case 'fran52h': return metricValue(s, 'fran52h', ctx) ?? (isNum(v.hogst52) && v.hogst52 > 0 && s.kurs > 0 ? (s.kurs / v.hogst52 - 1) * 100 : null);
+    case 'fran52l': { const l = isNum(s.varden.lagst52) ? s.varden.lagst52 : v.lagst52; return isNum(l) && l > 0 && s.kurs > 0 ? (s.kurs / l - 1) * 100 : null; }
+    case 'insyn_netto': return a && a.insyn && a.insyn.transaktioner > 0 ? (v.insyn_kop6m || 0) - (v.insyn_salj6m || 0) : null;
+    case 'rek_trend': return isNum(v.analytiker_andel_kop) && isNum(v.analytiker_andel_kop_3m) ? v.analytiker_andel_kop - v.analytiker_andel_kop_3m : null;
+    default: return isNum(v[falt]) ? v[falt] : null;
+  }
+}
+function kritPoang(k, v) {
+  if (!isNum(v)) return null;
+  if (k.typ === 'band') {
+    const [b0, b1] = k.bra, [d0, d1] = k.dalig;
+    if (v >= b0 && v <= b1) return 1;
+    if (v < b0) return v <= d0 ? 0 : (v - d0) / (b0 - d0);
+    return v >= d1 ? 0 : (d1 - v) / (d1 - b1);
+  }
+  const g = kritGrans(k);
+  const p = (v - g.dalig) / (g.bra - g.dalig);
+  return Math.max(0, Math.min(1, p));
+}
+function kritText(k, v) {
+  if (!isNum(v)) return k.namn + ': saknas';
+  const unit = k.enhet === 'percentil' ? ':e percentilen' : k.enhet === 'p.e.' ? ' procentenheter' : k.enhet === 'av 9' ? ' av 9' : k.enhet === 'år' ? ' år' : k.enhet === 'st' ? ' st' : k.enhet === 'x' ? '' : k.enhet === '%/år' ? ' %/år' : k.enhet ? ' ' + k.enhet : '';
+  return k.namn + ' ' + fmt(v, k.dec) + unit;
+}
+function kritGransText(k) {
+  if (k.typ === 'band') return 'bäst ' + k.bra[0] + '–' + k.bra[1];
+  const g = kritGrans(k), up = g.bra > g.dalig;
+  const u = k.enhet === 'percentil' ? '' : k.enhet === 'p.e.' ? ' p.e.' : k.enhet === 'av 9' ? '' : k.enhet === 'x' ? '' : k.enhet ? ' ' + k.enhet : '';
+  return 'bra ' + (up ? 'över' : 'under') + ' ' + fmt(g.bra, k.dec) + u + ', dåligt ' + (up ? 'under' : 'över') + ' ' + fmt(g.dalig, k.dec) + u;
+}
+function kritGaller(k, typ) {
+  if (k.bara && k.bara.indexOf(typ) < 0) return false;
+  if (k.ej && k.ej.indexOf(typ) >= 0) return false;
+  return true;
+}
+// Dippregler: köpregler på kursnedgång (utveckling mot GAV, avstånd från toppen, kurs under X) släpps bara igenom när kvalitet och styrka håller.
+const isDipRule = r => r.signal === 'kop' && ['utv_gav', 'fran52h', 'kurs'].indexOf(r.metric) >= 0 && (r.op === '<' || r.op === '<=');
+function bedom(s, ctx) {
+  const m = state.settings.modell;
+  const an = analysFor(s), a = an ? an.data : null;
+  const owned = s.antal > 0;
+  const typ = (a && a.profil && a.profil.typ) || 'vanlig';
+  const dims = DIMS.map(d => {
+    const kriterier = KRITERIER.filter(k => k.dim === d.id && kritGaller(k, typ)).map(k => {
+      const v = kritFalt(s, a, ctx, k.falt);
+      return { k, v, p: kritPoang(k, v) };
+    });
+    const med = kriterier.filter(x => x.p != null);
+    const vikt = med.reduce((n, x) => n + x.k.vikt, 0);
+    const poang = med.length >= 2 && vikt > 0 ? med.reduce((n, x) => n + x.p * x.k.vikt, 0) / vikt * 5 : null;
+    return { id: d.id, namn: d.namn, kort: d.kort, poang, kriterier, antal: med.length, av: kriterier.length, vikt: m.vikter[d.id] };
+  });
+  const dim = id => dims.find(d => d.id === id);
+  // Utdelning: inget utdelande bolag får 0 i dimensionen (och väger i Tillväxt-/Momentumstil ändå inget).
+  // Bolag utan utdelning: dimensionen räknas bara (som 0) när utdelning väger tungt i stilen; annars lämnas den utanför.
+  const u = dim('U'), da = kritFalt(s, a, ctx, 'da');
+  if (u.poang == null && a && (da === 0 || (da == null && a.utdelning && a.utdelning.direktavkastning == null))) { u.ingen = true; if (m.vikter.U >= 1.5) u.poang = 0; }
+  const medDim = dims.filter(d => d.poang != null && d.vikt > 0);
+  const viktSum = medDim.reduce((n, d) => n + d.vikt, 0);
+  let bas = medDim.length >= 3 && viktSum > 0 ? medDim.reduce((n, d) => n + d.poang / 5 * d.vikt, 0) / viktSum * 100 : null;
+  // Egna regler justerar poängen: ±4 per viktsteg. Dippregler kräver godkänd kvalitet och styrka.
+  const ev = evaluate(s, ctx);
+  const K = dim('K').poang, S = dim('S').poang;
+  const sparOk = !m.spar || (K != null && S != null && K >= m.sparNiva && S >= m.sparNiva);
+  let justering = 0;
+  const regelSkal = [];
+  ev.rows.filter(x => x.status === 'uppfylld').forEach(x => {
+    const r = x.rule, dip = isDipRule(r);
+    if (dip && !sparOk) { regelSkal.push({ typ: 'spar', text: signalText(x) + (r.namn ? ' · ' + r.namn : ''), r }); return; }
+    const d = (r.signal === 'kop' ? 1 : -1) * 4 * r.vikt;
+    justering += d;
+    regelSkal.push({ typ: r.signal, text: signalText(x) + (r.namn ? ' · ' + r.namn : ''), r, d });
+  });
+  let score = bas == null ? (regelSkal.some(x => x.d) ? Math.max(0, Math.min(100, 50 + justering)) : null) : Math.max(0, Math.min(100, bas + justering));
+  if (score != null) score = Math.round(score);
+  let verdict;
+  if (score == null) verdict = 'saknas';
+  else if (score >= m.troskel.kop) verdict = owned ? 'kop_mer' : 'kop';
+  else if (score >= m.troskel.behall) verdict = owned ? 'behall' : 'avvakta';
+  else if (score >= m.troskel.minska) verdict = owned ? 'minska' : 'undvik';
+  else verdict = owned ? 'salj' : 'undvik';
+  // Skäl för och emot: starkaste kriterierna vägda med dimensionens vikt, plus flaggor och regler.
+  // Ett kriterium med full poäng och vikt 2 i en dimension med vikt 1 får styrka 1,0; en egen regel på 8 poäng räknas lika starkt.
+  const alla = [];
+  dims.forEach(d => d.kriterier.forEach(x => { if (x.p != null && d.vikt > 0) alla.push({ p: x.p, styrka: (x.p - 0.5) * x.k.vikt * d.vikt, text: kritText(x.k, x.v), sub: d.kort + ' · ' + kritGransText(x.k), krit: x.k }); }));
+  regelSkal.forEach(z => { if (z.d) alla.push({ p: z.d > 0 ? 1 : 0, styrka: z.d / 8, text: z.text, sub: 'din regel · ' + fmtSigned(z.d, 0) + ' poäng' }); });
+  const skalFor = alla.filter(z => z.p >= 0.75).sort((p, q) => q.styrka - p.styrka);
+  const skalEmot = alla.filter(z => z.p <= 0.25).sort((p, q) => p.styrka - q.styrka);
+  const flaggor = (a && a.flaggor) || [];
+  return { score, bas: bas == null ? null : Math.round(bas), justering, verdict, dims, skalFor, skalEmot, flaggor, regelSkal, sparOk, typ, a, hamtad: an ? an.hamtad : null, ev, owned, stil: m.stil };
+}
+function evalAll() { const ctx = ctxFor(state.stocks); return state.stocks.map(s => ({ stock: s, ev: evaluate(s, ctx), b: bedom(s, ctx), ctx })); }
 function allSignals() {
   const out = [];
   evalAll().forEach(x => x.ev.triggered.forEach(row => out.push({ stock: x.stock, row })));
@@ -683,8 +1055,8 @@ function loggaBeslut() {
   let changed = false;
   state.stocks.forEach(s => {
     if (!(s.kurs > 0)) return;
-    const ev = evaluate(s, ctx);
-    const e = { d, id: s.id, sym: s.symbol || '', t: s.ticker, k: s.kurs, fx: s.fxSek || 1, v: ev.verdict, p: ev.score };
+    const b = bedom(s, ctx);
+    const e = { d, id: s.id, sym: s.symbol || '', t: s.ticker, k: s.kurs, fx: s.fxSek || 1, v: b.verdict, p: b.score };
     const i = state.logg.findIndex(x => x.d === d && x.id === s.id);
     if (i >= 0) { if (JSON.stringify(state.logg[i]) !== JSON.stringify(e)) { state.logg[i] = e; changed = true; } }
     else { state.logg.push(e); changed = true; }
@@ -733,20 +1105,30 @@ function ensureHistory(events) {
 }
 
 /* ---------- Kompassen ---------- */
+// Kompassen: poäng 0–100 på en halvcirkel. Röd zon under Minska-gränsen, grön från Köp-gränsen, grå däremellan.
 function gaugeSVG(score, extra) {
-  const kopT = state.settings.kopTroskel, saljT = state.settings.saljTroskel;
-  const pt = (sc, r) => { const a = (90 - sc * 0.9) * Math.PI / 180; return [50 + r * Math.cos(a), 52 - r * Math.sin(a)]; };
+  const t = state.settings.modell.troskel;
+  const pt = (sc, r) => { const a = (180 - sc * 1.8) * Math.PI / 180; return [50 + r * Math.cos(a), 52 - r * Math.sin(a)]; };
   const arc = (s0, s1, klass) => {
     if (s1 <= s0) return '';
     const p0 = pt(s0, 42), p1 = pt(s1, 42);
     return '<path class="z ' + klass + '" fill="none" d="M' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A42 42 0 0 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + '"/>';
   };
-  const s = score == null ? 0 : Math.max(-100, Math.min(100, score));
+  const s = score == null ? 50 : Math.max(0, Math.min(100, score));
   const n = pt(s, 33);
   return '<svg class="gauge ' + (score == null ? 'none ' : '') + (extra || '') + '" viewBox="0 0 100 58" aria-hidden="true">' +
-    arc(-100, -saljT, 'z-salj') + arc(-saljT, kopT, 'z-behall') + arc(kopT, 100, 'z-kop') +
+    arc(0, t.minska, 'z-salj') + arc(t.minska, t.behall, 'z-minska') + arc(t.behall, t.kop, 'z-behall') + arc(t.kop, 100, 'z-kop') +
     '<line class="needle" x1="50" y1="52" x2="' + n[0].toFixed(2) + '" y2="' + n[1].toFixed(2) + '"/><circle class="pivot" cx="50" cy="52" r="3.2"/></svg>';
 }
+// Sex små staplar, en per dimension (0–5). Tom stapel = går inte att bedöma.
+function dimsHTML(dims, extra) {
+  return '<span class="dims ' + (extra || '') + '" aria-hidden="true">' + dims.map(d => {
+    const p = d.poang;
+    const lvl = p == null ? 'na' : p >= 3.5 ? 'hi' : p < 2 ? 'lo' : 'mid';
+    return '<i class="' + lvl + '" style="--h:' + (p == null ? 100 : Math.max(8, p / 5 * 100)) + '%" title="' + esc(d.namn + ': ' + (p == null ? 'saknas' : fmt(p, 1) + ' av 5')) + '"></i>';
+  }).join('') + '</span>';
+}
+const dimClass = p => p == null ? 'na' : p >= 3.5 ? 'hi' : p < 2 ? 'lo' : 'mid';
 
 /* ---------- Rendering ---------- */
 function renderStatus() {
@@ -776,10 +1158,13 @@ function renderEmpty() {
 }
 
 function stockCard(x, ctx) {
-  const s = x.stock, ev = x.ev, owned = s.antal > 0;
+  const s = x.stock, ev = x.ev, b = x.b, owned = s.antal > 0;
   const value = owned && s.kurs > 0 ? sek(s, s.antal * s.kurs) : null;
   const utvP = metricValue(s, 'utv_gav', ctx), vikt = metricValue(s, 'vikt', ctx);
   const foreign = s.valuta && s.valuta !== 'SEK';
+  const topFor = b.skalFor[0], topEmot = b.skalEmot[0];
+  const skal = b.score == null ? (s.symbol ? (s.analysFel ? 'Analysen kunde inte hämtas' : 'Analys hämtas…') : 'Ingen analysdata – bara dina regler') :
+    '<span class="pos">+</span> ' + esc(topFor ? topFor.text : 'inget som sticker ut') + ' &nbsp; <span class="neg">−</span> ' + esc(topEmot ? topEmot.text : 'inget som sticker ut');
   return '<li class="stock-card" data-action="open-stock" data-id="' + esc(s.id) + '" tabindex="0" role="button">' +
     '<div class="sc-main">' +
       '<div class="sc-title"><span class="ticker">' + esc(s.ticker) + '</span><span class="name">' + esc(s.namn) + '</span>' +
@@ -788,9 +1173,10 @@ function stockCard(x, ctx) {
         '<span class="val">' + (value != null ? fmtKr(value) : (owned ? '' : 'Bevakas')) + '</span></div>' +
       (owned
         ? '<div class="sc-row num muted"><span>GAV ' + (s.gav > 0 ? fmt(s.gav, 2) : '–') + (isNum(s.forandring) ? ' · idag <span class="' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 1) + ' %</span>' : '') + '</span><span><span class="' + cls(utvP) + '">' + fmtPct(utvP, 1, true) + '</span> · Vikt ' + fmtPct(vikt, 1) + '</span></div>'
-        : '<div class="sc-row muted small"><span>' + (isNum(s.forandring) ? 'idag <span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 1) + ' %</span> · ' : '') + (ev.triggered.length ? ev.triggered.length + (ev.triggered.length === 1 ? ' signal' : ' signaler') : 'Inga signaler') + '</span></div>') +
+        : '<div class="sc-row muted small"><span>' + (isNum(s.forandring) ? 'idag <span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 1) + ' %</span> · ' : '') + (ev.triggered.length ? ev.triggered.length + (ev.triggered.length === 1 ? ' egen signal' : ' egna signaler') : 'Inga egna signaler') + '</span></div>') +
+      '<div class="sc-skal small muted">' + skal + '</div>' +
     '</div>' +
-    '<div class="sc-verdict">' + gaugeSVG(ev.score) + '<span class="chip ' + ev.verdict + '">' + verdictLabel(ev.verdict, owned) + '</span></div>' +
+    '<div class="sc-verdict">' + dimsHTML(b.dims) + '<span class="score-pill num">' + (b.score == null ? '–' : b.score) + '</span><span class="chip ' + verdictClass(b.verdict) + '">' + verdictLabel(b.verdict, owned) + '</span></div>' +
   '</li>';
 }
 
@@ -800,18 +1186,20 @@ function renderPortfolio() {
   const evals = evalAll();
   const owned = evals.filter(e => e.stock.antal > 0).sort((a, b) => (sek(b.stock, b.stock.antal * (b.stock.kurs || 0))) - (sek(a.stock, a.stock.antal * (a.stock.kurs || 0))));
   const watch = evals.filter(e => e.stock.antal <= 0).sort((a, b) => a.stock.ticker.localeCompare(b.stock.ticker, 'sv'));
-  const signals = allSignals();
-  const kopN = signals.filter(x => x.row.rule.signal === 'kop').length, saljN = signals.length - kopN;
+  const kopN = evals.filter(x => KOPSIDA.indexOf(x.b.verdict) >= 0).length, saljN = evals.filter(x => SALJSIDA.indexOf(x.b.verdict) >= 0).length;
   const utv = ctx.total - ctx.cost, utvPct = ctx.cost > 0 ? utv / ctx.cost * 100 : null;
   const hasEx = state.stocks.some(s => s.exempel);
   const errs = state.stocks.filter(s => s.fel);
   const latest = state.stocks.filter(s => s.hamtad).map(s => s.hamtad).sort().pop();
+  const snitt = owned.filter(x => x.b.score != null);
+  const snittPoang = snitt.length ? snitt.reduce((n, x) => n + x.b.score * (sek(x.stock, x.stock.antal * (x.stock.kurs || 0)) || 0), 0) / Math.max(1, snitt.reduce((n, x) => n + (sek(x.stock, x.stock.antal * (x.stock.kurs || 0)) || 0), 0)) : null;
   return '<section class="summary">' +
       '<div class="tile"><div class="tile-label">Portföljvärde</div><div class="tile-value num">' + fmtKr(ctx.total) + '</div><div class="tile-sub num">Anskaffning ' + fmtKr(ctx.cost) + '</div></div>' +
       '<div class="tile"><div class="tile-label">Utveckling</div><div class="tile-value num ' + cls(utv) + '">' + fmtSigned(utv, 0) + ' kr</div><div class="tile-sub num ' + cls(utv) + '">' + fmtPct(utvPct, 1, true) + '</div></div>' +
       '<div class="tile"><div class="tile-label">Innehav</div><div class="tile-value num">' + owned.length + '</div><div class="tile-sub">' + (watch.length ? watch.length + ' bevakas' : 'Inga bevakade') + '</div></div>' +
-      '<div class="tile"><div class="tile-label">Signaler</div><div class="tile-value num">' + signals.length + '</div><div class="tile-sub"><span class="dot kop"></span>' + kopN + ' köp<span class="dot salj"></span>' + saljN + ' sälj</div></div>' +
+      '<div class="tile"><div class="tile-label">Råd · ' + esc(STILAR[state.settings.modell.stil] ? STILAR[state.settings.modell.stil].namn : 'Egen stil') + '</div><div class="tile-value num">' + (snittPoang == null ? '–' : fmt(snittPoang, 0)) + '<span class="tile-unit">/100</span></div><div class="tile-sub"><span class="dot kop"></span>' + kopN + ' köp<span class="dot salj"></span>' + saljN + ' sälj/minska</div></div>' +
     '</section>' +
+    (state.uppgraderad ? '<div class="notice"><span>Ny analysmodell: varje aktie bedöms nu i sex dimensioner (värdering, kvalitet, tillväxt, styrka, utdelning, trend) enligt etablerade kriterier. Dina regler finns kvar och justerar poängen; standardregler som modellen täcker togs bort. Stil och gränsvärden ställer du under Regler.</span><button class="btn link" data-action="dismiss-upgrade">Ok</button></div>' : '') +
     (hasEx ? '<div class="notice"><span>Exempelinnehav: antal och GAV är påhittade, kurser och nyckeltal hämtas på riktigt. Byt ut mot dina egna aktier när du vill.</span><button class="btn link" data-action="clear-examples">Ta bort exempel</button></div>' : '') +
     (errs.length ? '<div class="notice err"><span>Kunde inte hämta: ' + esc(errs.map(s => s.ticker).join(', ')) + ' – ' + esc(errs[0].fel) + '</span><button class="btn link" data-action="refresh-all">Försök igen</button></div>' : '') +
     '<section class="block"><div class="list-head"><h2>Innehav</h2><div class="actions">' +
@@ -819,7 +1207,7 @@ function renderPortfolio() {
       (owned.length ? '<ul class="stocks">' + owned.map(e => stockCard(e, ctx)).join('') + '</ul>' : '<p class="hint">Du äger inga aktier ännu. Lägg till en aktie med antal och GAV.</p>') +
     '</section>' +
     (watch.length ? '<section class="block"><div class="list-head"><h2>Bevakar</h2><span class="hint">Analyseras men räknas inte in i portföljen</span></div><ul class="stocks">' + watch.map(e => stockCard(e, ctx)).join('') + '</ul></section>' : '') +
-    '<p class="hint center">' + (latest ? 'Senast hämtat ' + esc(fmtTime(latest)) + ' · ' : '') + 'Kurser och nyckeltal hämtas automatiskt (Yahoo Finance) när appen öppnas och när du trycker Uppdatera.</p>';
+    '<p class="hint center">' + (latest ? 'Senast hämtat ' + esc(fmtTime(latest)) + ' · ' : '') + 'Kurser hämtas automatiskt (Yahoo Finance) när appen öppnas, den fördjupade analysen en gång per dag. Beslutsstöd, inte finansiell rådgivning.</p>';
 }
 
 function ruleRow(r, scope) {
@@ -833,7 +1221,7 @@ function ruleRow(r, scope) {
 function renderDetail() {
   const s = stockById(state.stockId);
   if (!s) { state.stockId = null; return renderPortfolio(); }
-  const ctx = ctxFor(state.stocks), ev = evaluate(s, ctx), owned = s.antal > 0;
+  const ctx = ctxFor(state.stocks), b = bedom(s, ctx), ev = b.ev, owned = s.antal > 0;
   const foreign = s.valuta && s.valuta !== 'SEK';
   const cur = foreign ? s.valuta : 'kr';
   const value = owned && s.kurs > 0 ? sek(s, s.antal * s.kurs) : null;
@@ -884,14 +1272,7 @@ function renderDetail() {
         (foreign ? '<div><dt>Växelkurs</dt><dd>1 ' + esc(s.valuta) + ' = ' + fmt(s.fxSek, 2) + ' kr</dd></div>' : '') +
       '</dl>' +
     '</section>' +
-    '<section class="card d-verdict">' +
-      '<div class="gauge-wrap">' + gaugeSVG(ev.score) + '<div class="verdict-label ' + ev.verdict + '">' + verdictLabel(ev.verdict, owned) + '</div><div class="score num">' + (ev.score == null ? 'Inga regler går att räkna på' : 'Poäng ' + fmtSigned(ev.score, 0)) + '</div></div>' +
-      '<div class="verdict-text">' +
-        '<p>' + (ev.score == null ? 'Fyll i nyckeltal så att reglerna kan räknas.' :
-          'Köpkriterier <b class="num">' + (ev.kopShare == null ? '–' : fmt(ev.kopShare, 0) + ' %') + '</b> uppfyllda · Säljkriterier <b class="num">' + (ev.saljShare == null ? '–' : fmt(ev.saljShare, 0) + ' %') + '</b>') + '</p>' +
-        (ev.rows.length ? '<ul class="rule-check">' + checkRows + '</ul>' : '<p class="hint">Inga aktiva regler. Lägg till under <a href="#regler">Regler</a>.</p>') +
-      '</div>' +
-    '</section>' +
+    renderBedomning(s, b, ctx, checkRows) +
     '<section class="card"><div class="card-head"><h2>Nyckeltal</h2><a class="hint" href="#regler">Ändra listan</a></div>' +
       '<table class="metrics"><tbody>' + metricRows + '</tbody></table>' +
       '<p class="hint">' + (s.symbol ? 'Fält märkta <span class="tag auto">auto</span> fylls i vid varje hämtning. Vill du använda ett eget värde: skriv in det och tryck på auto så låses fältet.' : 'Skriv in värdena från bolagets rapport eller din mäklare. Tomt fält betyder att regler på det nyckeltalet hoppas över.') + '</p>' +
@@ -909,21 +1290,62 @@ function renderDetail() {
   '</div>';
 }
 
+// Bedömningskortet på aktiens sida: kompass, beslut, skäl för och emot, de sex dimensionerna med kriterier, flaggor och dina regler.
+function renderBedomning(s, b, ctx, checkRows) {
+  const owned = s.antal > 0, m = state.settings.modell;
+  const stilNamn = STILAR[m.stil] ? STILAR[m.stil].namn : 'Egen stil';
+  const li = (z, klass) => '<li class="' + klass + '"><span class="mark">' + (klass === 'for' ? '+' : '−') + '</span><span class="rc-text">' + esc(z.text) + (z.sub ? '<span class="sub">' + esc(z.sub) + '</span>' : '') + '</span></li>';
+  const skal = (b.skalFor.length || b.skalEmot.length)
+    ? '<div class="skal"><div><h3>Talar för</h3>' + (b.skalFor.length ? '<ul class="skal-list">' + b.skalFor.slice(0, 3).map(z => li(z, 'for')).join('') + '</ul>' : '<p class="hint">Inget som sticker ut.</p>') + '</div>' +
+      '<div><h3>Talar emot</h3>' + (b.skalEmot.length ? '<ul class="skal-list">' + b.skalEmot.slice(0, 3).map(z => li(z, 'emot')).join('') + '</ul>' : '<p class="hint">Inget som sticker ut.</p>') + '</div></div>'
+    : '';
+  const dimRows = b.dims.map(d => {
+    const p = d.poang;
+    const krit = d.kriterier.map(x => {
+      const k = x.k, g = x.p == null ? '' : x.p >= 0.75 ? 'hi' : x.p <= 0.25 ? 'lo' : 'mid';
+      return '<li class="krit ' + (x.p == null ? 'na' : g) + '"><span class="k-dot"></span><span class="k-text"><span class="k-name">' + esc(k.namn) + '</span> <span class="num k-val">' + (x.p == null ? '<span class="muted">saknas</span>' : esc(kritText(k, x.v).slice(k.namn.length + 1))) + '</span>' +
+        '<span class="k-sub">' + esc(kritGransText(k)) + ' · ' + esc(k.kalla) + '</span></span><span class="num k-p">' + (x.p == null ? '' : fmt(x.p * 5, 1)) + '</span></li>';
+    }).join('');
+    const sub = d.ingen && p == null ? 'ingen utdelning – räknas inte i den här stilen' : d.ingen ? 'ingen utdelning' : p == null ? (d.antal ? 'för få kriterier går att räkna (' + d.antal + ' av ' + d.av + ')' : 'ingen data') : d.antal + ' av ' + d.av + ' kriterier · vikt ' + fmt(d.vikt, 2).replace(/,?0+$/, '');
+    return '<details class="dim ' + dimClass(p) + (d.vikt === 0 ? ' off' : '') + '"><summary><span class="dim-name">' + esc(d.namn) + '</span><span class="dim-bar"><i style="--w:' + (p == null ? 0 : p / 5 * 100) + '%"></i></span><span class="dim-p num">' + (p == null ? '–' : fmt(p, 1)) + '</span><span class="dim-sub">' + esc(sub) + '</span></summary>' +
+      (krit ? '<ul class="krit-list">' + krit + '</ul>' : '<p class="hint">Inga kriterier gäller för den här bolagstypen.</p>') + '</details>';
+  }).join('');
+  const typNamn = { bank: 'bank', forsakring: 'försäkringsbolag', finans: 'finansbolag', investment: 'investmentbolag', fastighet: 'fastighetsbolag' }[b.typ];
+  const analysLine = s.symbol
+    ? (b.a ? 'Analys hämtad ' + esc(fmtTime(b.hamtad)) + ' · Yahoo Finance' + (b.a.profil && b.a.profil.bransch ? ' · ' + esc(b.a.profil.bransch) : '') + (typNamn ? ' · bedöms som ' + typNamn : '') + (b.a.saknas && b.a.saknas.length ? ' · saknas: ' + esc(b.a.saknas.join(', ')) : '') + (analysVarden(s, b.a)._omraknad ? ' · kursbaserade mått omräknade till din kurs ' + fmt(s.kurs, 2) + ' (källans ' + fmt(b.a.kurs, 2) + ' från ' + esc(fmtDate(b.a.kursTid)) + ')' : '') + (b.a.opalitlig && b.a.opalitlig.indexOf('vinst') >= 0 ? ' · vinstbaserade kriterier hoppas över (orimlig vinst i källan)' : '')
+      : (s.analysFel ? 'Analysen kunde inte hämtas: ' + esc(s.analysFel) : 'Analysen hämtas vid nästa uppdatering')) + ' · <button class="btn link small" data-action="refresh-analys"' + (refreshing ? ' disabled' : '') + '>Hämta analys igen</button>'
+    : 'Ingen automatisk hämtning – bara dina egna regler kan bedömas. <button class="btn link small" data-action="edit-stock">Koppla till Yahoo-symbol</button>';
+  const sparText = b.regelSkal.filter(z => z.typ === 'spar');
+  return '<section class="card d-verdict">' +
+      '<div class="gauge-wrap">' + gaugeSVG(b.score) + '<div class="verdict-label ' + verdictClass(b.verdict) + '">' + verdictLabel(b.verdict, owned) + '</div>' +
+        '<div class="score num">' + (b.score == null ? 'Går inte att bedöma ännu' : 'Poäng ' + b.score + ' av 100 · ' + esc(stilNamn) + (b.justering ? ' · regler ' + fmtSigned(b.justering, 0) : '')) + '</div></div>' +
+      '<div class="verdict-text">' +
+        (b.score == null ? '<p class="lead">' + (s.symbol ? 'När analysen är hämtad bedöms aktien i sex dimensioner enligt etablerade kriterier.' : 'Koppla aktien till en Yahoo-symbol så hämtas allt modellen behöver.') + '</p>' : skal) +
+        (b.flaggor.length ? '<div class="flaggor"><h3>Röda flaggor</h3><ul>' + b.flaggor.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul></div>' : '') +
+      '</div>' +
+      '<div class="dims-wrap">' + dimRows + '</div>' +
+      (b.ev.rows.length ? '<div class="regler-wrap"><h3>Dina regler</h3>' + (sparText.length ? '<p class="hint spar">Köp-dippen-spärren håller tillbaka: ' + esc(sparText.map(z => z.text).join('; ')) + ' – kvalitet och styrka måste vara minst ' + fmt(m.sparNiva, 1) + ' av 5.</p>' : '') + '<ul class="rule-check">' + checkRows + '</ul></div>' : '') +
+      '<p class="hint">' + analysLine + '</p>' +
+    '</section>';
+}
+
 function renderSignals() {
   const evals = evalAll();
   const signals = allSignals();
   const kopN = signals.filter(x => x.row.rule.signal === 'kop').length, saljN = signals.length - kopN;
   const stale = state.stocks.filter(s => isStale(s) || s.fel);
-  const order = { kop: 0, salj: 1, bevaka: 2, behall: 3, saknas: 4 };
-  const byVerdict = evals.slice().sort((a, b) => (order[a.ev.verdict] - order[b.ev.verdict]) || a.stock.ticker.localeCompare(b.stock.ticker, 'sv'));
+  const order = { kop_mer: 0, kop: 0, salj: 1, minska: 2, undvik: 2, behall: 3, avvakta: 3, bevaka: 3, saknas: 4 };
+  const byVerdict = evals.slice().sort((a, b) => (order[a.b.verdict] - order[b.b.verdict]) || ((b.b.score || 0) - (a.b.score || 0)) || a.stock.ticker.localeCompare(b.stock.ticker, 'sv'));
+  const radKop = evals.filter(x => KOPSIDA.indexOf(x.b.verdict) >= 0).length, radSalj = evals.filter(x => SALJSIDA.indexOf(x.b.verdict) >= 0).length;
   return '<section class="summary three">' +
-      '<div class="tile"><div class="tile-label">Köpsignaler</div><div class="tile-value num pos">' + kopN + '</div></div>' +
-      '<div class="tile"><div class="tile-label">Säljsignaler</div><div class="tile-value num neg">' + saljN + '</div></div>' +
+      '<div class="tile"><div class="tile-label">Köpråd</div><div class="tile-value num pos">' + radKop + '</div><div class="tile-sub">' + kopN + ' egna köpsignaler</div></div>' +
+      '<div class="tile"><div class="tile-label">Sälj / minska</div><div class="tile-value num neg">' + radSalj + '</div><div class="tile-sub">' + saljN + ' egna säljsignaler</div></div>' +
       '<div class="tile"><div class="tile-label">Behöver data</div><div class="tile-value num" style="color:var(--watch)">' + stale.length + '</div><div class="tile-sub">gammal kurs eller fel</div></div>' +
     '</section>' +
     (state.stocks.length ? '<section class="card"><div class="card-head"><h2>Beslut just nu</h2><button class="btn primary sm" data-action="refresh-all"' + (refreshing ? ' disabled' : '') + '>' + (refreshing ? 'Uppdaterar…' : 'Uppdatera') + '</button></div>' +
-      '<div class="verdict-row">' + byVerdict.map(x => '<button class="btn sm" data-action="open-stock" data-id="' + esc(x.stock.id) + '"><span class="chip ' + x.ev.verdict + '">' + verdictLabel(x.ev.verdict, x.stock.antal > 0) + '</span>' + esc(x.stock.ticker) + '</button>').join('') + '</div></section>' : '') +
-    '<section class="block"><div class="list-head"><h2>Aktiva signaler</h2><span class="hint">Regler som är uppfyllda just nu</span></div>' +
+      '<ul class="beslut">' + byVerdict.map(x => '<li class="beslut-rad" data-action="open-stock" data-id="' + esc(x.stock.id) + '" tabindex="0" role="button"><span class="chip ' + verdictClass(x.b.verdict) + '">' + verdictLabel(x.b.verdict, x.stock.antal > 0) + '</span><span class="b-ticker">' + esc(x.stock.ticker) + '</span>' + dimsHTML(x.b.dims, 'sm') + '<span class="num b-score">' + (x.b.score == null ? '–' : x.b.score) + '</span><span class="b-skal small muted">' + esc(x.b.skalEmot[0] ? '− ' + x.b.skalEmot[0].text : (x.b.skalFor[0] ? '+ ' + x.b.skalFor[0].text : '')) + '</span></li>').join('') + '</ul>' +
+      '<p class="hint">Poäng 0–100 med stilen ' + esc(STILAR[state.settings.modell.stil] ? STILAR[state.settings.modell.stil].namn : 'Egen') + '. Öppna aktien för skälen och alla kriterier.</p></section>' : '') +
+    '<section class="block"><div class="list-head"><h2>Dina signaler</h2><span class="hint">Egna regler som är uppfyllda just nu</span></div>' +
       (signals.length ? '<ul class="signals">' + signals.map(x => {
         const r = x.row.rule;
         return '<li class="signal ' + r.signal + '" data-action="open-stock" data-id="' + esc(x.stock.id) + '" tabindex="0" role="button">' +
@@ -946,12 +1368,14 @@ function renderFacit() {
   const first = state.logg.map(e => e.d).sort()[0];
   const dagar = daysSince(first) || 0;
   const horis = [['nu', 'Hittills'], [7, '1 vecka'], [30, '1 månad'], [90, '3 mån']];
+  // Grupper: köpsidan (Köp, Köp mer), säljsidan (Sälj, Minska, Undvik) och neutrala (Behåll, Avvakta, Bevaka).
+  const grupp = v => KOPSIDA.indexOf(v) >= 0 ? 'kop' : SALJSIDA.indexOf(v) >= 0 ? 'salj' : v === 'bevaka' ? 'bevaka' : 'behall';
   const stat = {};
   ['kop', 'salj', 'bevaka', 'behall'].forEach(v => {
     stat[v] = {};
     horis.forEach(h => {
       const rs = [];
-      events.filter(e => e.v === v && e.d !== today).forEach(e => { const r = h[0] === 'nu' ? utfallNu(e) : utfall(e, h[0]); if (isNum(r)) rs.push(r); });
+      events.filter(e => grupp(e.v) === v && e.d !== today).forEach(e => { const r = h[0] === 'nu' ? utfallNu(e) : utfall(e, h[0]); if (isNum(r)) rs.push(r); });
       stat[v][h[0]] = { n: rs.length, avg: rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length * 100 : null, hit: rs.length ? rs.filter(r => v === 'salj' ? r < 0 : r > 0).length / rs.length * 100 : null };
     });
   });
@@ -960,7 +1384,7 @@ function renderFacit() {
     return '<div class="tile"><div class="tile-label">' + label + '</div><div class="tile-value num ' + (best.avg == null ? '' : cls(v === 'salj' ? -best.avg : best.avg)) + '">' + (best.avg == null ? '–' : fmtSigned(best.avg, 1) + ' %') + '</div><div class="tile-sub">' + (best.n ? 'snitt ' + bestLabel + ' · ' + fmt(best.hit, 0) + ' % ' + (v === 'salj' ? 'föll' : 'steg') + ' · ' + best.n + ' råd' : 'inga råd att utvärdera ännu') + '</div></div>';
   };
   const cell = r => isNum(r) ? '<span class="' + cls(r) + '">' + fmtSigned(r * 100, 1) + ' %</span>' : '<span class="muted">–</span>';
-  const rows = events.slice(0, 80).map(e => '<tr><td class="w"><b>' + esc(e.t) + '</b><div class="small muted">' + esc(fmtDate(e.d)) + '</div></td><td>' + (e.fran ? '<span class="chip sm ' + e.fran + '">' + esc(verdictLabel(e.fran, true)) + '</span> → ' : '') + '<span class="chip sm ' + e.v + '">' + esc(verdictLabel(e.v, true)) + '</span></td><td class="num r">' + cell(utfallNu(e)) + '</td><td class="num r">' + cell(utfall(e, 7)) + '</td><td class="num r">' + cell(utfall(e, 30)) + '</td><td class="num r">' + cell(utfall(e, 90)) + '</td><td class="num r muted">' + fmt(e.k, 2) + '</td></tr>').join('');
+  const rows = events.slice(0, 80).map(e => '<tr><td class="w"><b>' + esc(e.t) + '</b><div class="small muted">' + esc(fmtDate(e.d)) + '</div></td><td>' + (e.fran ? '<span class="chip sm ' + verdictClass(e.fran) + '">' + esc(verdictLabel(e.fran, true)) + '</span> → ' : '') + '<span class="chip sm ' + verdictClass(e.v) + '">' + esc(verdictLabel(e.v, true)) + '</span></td><td class="num r">' + cell(utfallNu(e)) + '</td><td class="num r">' + cell(utfall(e, 7)) + '</td><td class="num r">' + cell(utfall(e, 30)) + '</td><td class="num r">' + cell(utfall(e, 90)) + '</td><td class="num r muted">' + fmt(e.k, 2) + '</td></tr>').join('');
   const baseline = stat.bevaka.nu.n + stat.behall.nu.n ? 'Som jämförelse: aktier med Bevaka/Behåll har i snitt gått ' + fmtSigned(((stat.bevaka.nu.avg || 0) * stat.bevaka.nu.n + (stat.behall.nu.avg || 0) * stat.behall.nu.n) / (stat.bevaka.nu.n + stat.behall.nu.n), 1) + ' % sedan beslutet.' : '';
   return '<div class="facit">' +
     '<section class="summary" style="grid-template-columns:1fr 1fr">' + tile('kop', 'Köpråd') + tile('salj', 'Säljråd') + '</section>' +
@@ -969,25 +1393,50 @@ function renderFacit() {
       '<div class="table-scroll"><table class="tx"><thead><tr><th>Aktie</th><th>Beslut</th><th class="r">Hittills</th><th class="r">1 v</th><th class="r">1 mån</th><th class="r">3 mån</th><th class="r">Kurs då</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       (events.length > 80 ? '<p class="hint">Visar de 80 senaste av ' + events.length + '.</p>' : '') +
     '</section>' +
-    '<p class="hint center">' + (dagar < 60 ? 'Träffsäkerhet går att bedöma först efter några månader och ett tjugotal råd. ' : '') + 'Loggen sparas bara i den här enheten och följer med i säkerhetskopian.</p>' +
+    '<p class="hint center">' + (dagar < 60 ? 'Träffsäkerhet går att bedöma först efter några månader och ett tjugotal råd. ' : '') + 'Råd före ' + esc(fmtDate('2026-11-17')) + ' kommer från den gamla regelmodellen (poäng −100…+100), senare från analysmodellen (0–100). Loggen sparas bara i den här enheten och följer med i säkerhetskopian.</p>' +
   '</div>';
 }
 
+function renderModell() {
+  const m = state.settings.modell;
+  const stil = STILAR[m.stil];
+  const vikterHtml = DIMS.map(d => '<label class="vikt"><span>' + esc(d.namn) + '</span><input class="num" inputmode="decimal" data-field="modell.vikt.' + d.id + '" value="' + inputVal(m.vikter[d.id], 2) + '" aria-label="Vikt ' + esc(d.namn) + '"></label>').join('');
+  const kritHtml = DIMS.map(d => {
+    const ks = KRITERIER.filter(k => k.dim === d.id);
+    return '<details class="krit-grupp"><summary><span class="dim-name">' + esc(d.namn) + '</span><span class="hint">' + ks.length + ' kriterier</span></summary><ul class="krit-edit">' + ks.map(k => {
+      const g = kritGrans(k), egen = !!m.granser[k.id];
+      const typText = k.bara ? ' · bara ' + k.bara.join('/') : k.ej ? ' · inte ' + k.ej.join('/') : '';
+      const u = k.enhet === 'percentil' ? 'percentil' : k.enhet;
+      return '<li><div class="ke-head"><span class="k-name">' + esc(k.namn) + '</span><span class="hint">' + esc(k.kalla) + typText + ' · vikt ' + k.vikt + '</span><div class="hint">' + esc(k.desc) + '</div></div>' +
+        (k.typ === 'band' ? '<div class="hint">Bäst ' + k.bra[0] + '–' + k.bra[1] + ', sämst under ' + k.dalig[0] + ' eller över ' + k.dalig[1] + '.</div>'
+          : '<div class="ke-in"><label>Bra ' + (g.bra > g.dalig ? 'från' : 'upp till') + ' <input class="num" inputmode="decimal" data-field="modell.grans.' + k.id + '.bra" value="' + inputVal(g.bra, 2) + '"> ' + esc(u) + '</label>' +
+            '<label>Dåligt ' + (g.bra > g.dalig ? 'under' : 'över') + ' <input class="num" inputmode="decimal" data-field="modell.grans.' + k.id + '.dalig" value="' + inputVal(g.dalig, 2) + '"> ' + esc(u) + '</label>' +
+            (egen ? '<button class="btn link small" data-action="reset-grans" data-id="' + esc(k.id) + '">Standard</button>' : '') + '</div>') + '</li>';
+    }).join('') + '</ul></details>';
+  }).join('');
+  return '<section class="card"><div class="card-head"><h2>Analysmodell</h2><button class="btn sm" data-action="reset-modell">Återställ allt</button></div>' +
+      '<p class="lead">Varje aktie får 0–5 poäng i sex dimensioner, byggda på kriterier från etablerade ramverk (Graham, Buffett, Lynch, Piotroski, Greenblatt, Minervini, Simply Wall St). Dimensionerna vägs ihop efter din investeringsstil till en poäng 0–100 som ger beslutet. Allt här går att ändra.</p>' +
+      '<div class="field"><span class="lbl">Investeringsstil</span><div class="stilar">' + Object.keys(STILAR).map(id => '<button class="btn sm' + (m.stil === id ? ' primary' : '') + '" data-action="set-stil" data-id="' + id + '">' + esc(STILAR[id].namn) + '</button>').join('') + (m.stil === 'egen' ? '<button class="btn sm primary" disabled>Egen</button>' : '') + '</div>' +
+        '<p class="hint">' + esc(stil ? stil.desc : 'Egna vikter. Välj en stil för att återgå till färdiga vikter.') + '</p></div>' +
+      '<div class="field"><span class="lbl">Dimensionernas vikter (0 = räknas inte, 3 = väger tyngst)</span><div class="vikter">' + vikterHtml + '</div></div>' +
+      '<div class="thresholds">' +
+        '<label><span class="chip kop">Köp mer / Köp</span> från <input class="num" inputmode="numeric" data-field="modell.troskel.kop" value="' + m.troskel.kop + '"> poäng</label>' +
+        '<label><span class="chip behall">Behåll / Avvakta</span> från <input class="num" inputmode="numeric" data-field="modell.troskel.behall" value="' + m.troskel.behall + '"> poäng</label>' +
+        '<label><span class="chip salj">Minska / Undvik</span> från <input class="num" inputmode="numeric" data-field="modell.troskel.minska" value="' + m.troskel.minska + '"> poäng · därunder <span class="chip salj">Sälj</span></label>' +
+      '</div>' +
+      '<label class="check"><input type="checkbox" data-field="modell.spar"' + (m.spar ? ' checked' : '') + '> Köp-dippen-spärr: köpregler på kursnedgång slår bara igenom när Kvalitet och Finansiell styrka är minst <input class="num inline" inputmode="decimal" data-field="modell.sparNiva" value="' + inputVal(m.sparNiva, 1) + '"> av 5</label>' +
+      '<details class="krit-master"><summary><span class="dim-name">Kriterier och gränsvärden</span><span class="hint">' + KRITERIER.length + ' kriterier · tryck för att se och ändra</span></summary>' +
+        '<p class="hint">Ett kriterium ger full poäng vid "bra"-gränsen eller bättre, noll vid "dålig"-gränsen eller sämre och däremellan en glidande skala. Banker, försäkrings- och investmentbolag bedöms med egna kriterier (P/B, ROE, soliditet på banknivå) och slipper F-score, Z-score och skuldmått.</p>' + kritHtml + '</details>' +
+    '</section>';
+}
 function renderRules() {
   const st = state.settings;
   const usedBy = id => st.rules.filter(r => r.metric === id).length + state.stocks.reduce((n, s) => n + s.regler.filter(r => r.metric === id).length, 0);
   const latest = state.stocks.filter(s => s.hamtad).map(s => s.hamtad).sort().pop();
-  return '<section class="card"><div class="card-head"><h2>Beslutsregler</h2><button class="btn primary sm" data-action="add-rule">+ Ny regel</button></div>' +
-      '<p class="lead">Gäller alla aktier. En regel ger en köp- eller säljsignal när villkoret är uppfyllt. Vikten (1–3) styr hur mycket regeln väger i beslutet. Egna regler för en enskild aktie, t.ex. en målkurs, lägger du på aktiens sida.</p>' +
+  return renderModell() +
+    '<section class="card"><div class="card-head"><h2>Dina regler</h2><button class="btn primary sm" data-action="add-rule">+ Ny regel</button></div>' +
+      '<p class="lead">Gäller alla aktier och justerar modellens poäng: en uppfylld köpregel ger +4 poäng per viktsteg, en säljregel −4. Här passar det som bara du kan avgöra – portföljvikt, utveckling mot GAV, målkurser. Regler för en enskild aktie lägger du på aktiens sida.</p>' +
       (st.rules.length ? '<ul class="rules">' + st.rules.map(r => ruleRow(r, 'global')).join('') + '</ul>' : '<p class="hint">Inga regler ännu.</p>') +
-    '</section>' +
-    '<section class="card"><h2>Så räknas beslutet</h2>' +
-      '<p class="lead">Köp- och säljreglerna vägs var för sig: <b>köpandel</b> är uppfylld köpvikt delat med all köpvikt som går att räkna på, och <b>säljandel</b> på samma sätt. Kompassen visar poängen <span class="num">köpandel − säljandel</span>, från −100 till +100. Regler som saknar värde räknas inte alls.</p>' +
-      '<div class="thresholds">' +
-        '<label><span class="chip kop">Köp</span> när poängen är minst <input id="kop-troskel" class="num" inputmode="numeric" data-field="settings.kopTroskel" value="' + st.kopTroskel + '"></label>' +
-        '<label><span class="chip salj">Sälj</span> när poängen är högst −<input id="salj-troskel" class="num" inputmode="numeric" data-field="settings.saljTroskel" value="' + st.saljTroskel + '"></label>' +
-        '<p class="hint"><span class="chip bevaka">Bevaka</span> när någon regel är uppfylld utan att tröskeln nås · <span class="chip behall">Behåll</span> när ingen regel slår.</p>' +
-      '</div>' +
     '</section>' +
     '<section class="card"><div class="card-head"><h2>Nyckeltal</h2><button class="btn sm" data-action="add-metric">+ Nytt nyckeltal</button></div>' +
       '<p class="lead">De beräknade nyckeltalen följer alltid med. De övriga hämtas automatiskt från Yahoo Finance om de är kopplade till en källa, annars skriver du in dem själv per aktie. Allt här går att skriva regler på.</p>' +
@@ -1282,6 +1731,11 @@ app.addEventListener('click', e => {
       state.stocks = state.stocks.filter(x => !x.exempel); if (s && s.exempel) state.stockId = null; store.save(); render(); toast('Exempeldata borttagen'); }); break;
     case 'export': exportJSON(); break;
     case 'import': importForm(); break;
+    case 'dismiss-upgrade': state.uppgraderad = false; render(); break;
+    case 'refresh-analys': if (s) { toast('Hämtar analys för ' + s.ticker + '…'); refreshStock(s.id, { forceAnalys: true }).then(() => toast(s.analysFel ? 'Analysen gick inte: ' + s.analysFel : s.ticker + ' analyserad'), err => toast('Gick inte: ' + err.message)); } break;
+    case 'set-stil': if (STILAR[id]) { state.settings.modell.stil = id; state.settings.modell.vikter = clone(STILAR[id].vikter); commitSettings(); toast('Stil: ' + STILAR[id].namn); } break;
+    case 'reset-grans': delete state.settings.modell.granser[id]; commitSettings(); break;
+    case 'reset-modell': confirmSheet('Återställ analysmodellen?', 'Stil, vikter, trösklar, spärr och alla gränsvärden återgår till standard. Dina regler och aktier påverkas inte.', 'Återställ', () => { state.settings.modell = clone(DEFAULT_MODELL); commitSettings(); toast('Modellen återställd'); }); break;
   }
 });
 app.addEventListener('change', e => {
@@ -1307,6 +1761,31 @@ app.addEventListener('change', e => {
   } else if (f === 'settings.kopTroskel' || f === 'settings.saljTroskel') {
     const key = f.split('.')[1], v = parseNum(el.value);
     if (v != null) state.settings[key] = clampInt(v, 1, 100, state.settings[key]);
+    commitSettings();
+  } else if (f.indexOf('modell.') === 0) {
+    const m = state.settings.modell, parts = f.split('.'), v = parseNum(el.value);
+    if (parts[1] === 'vikt' && DIMS.some(d => d.id === parts[2])) {
+      if (v == null || v < 0 || v > 3) { render(); toast('Vikten ska vara 0–3'); return; }
+      m.vikter[parts[2]] = Math.round(v * 100) / 100;
+      // Egna vikter som inte matchar någon färdig stil → "Egen"
+      const match = Object.keys(STILAR).find(id => DIMS.every(d => STILAR[id].vikter[d.id] === m.vikter[d.id]));
+      m.stil = match || 'egen';
+    } else if (parts[1] === 'troskel') {
+      if (v == null) { render(); return; }
+      m.troskel[parts[2]] = Math.max(0, Math.min(100, Math.round(v)));
+      if (m.troskel.behall > m.troskel.kop) m.troskel.behall = m.troskel.kop;
+      if (m.troskel.minska > m.troskel.behall) m.troskel.minska = m.troskel.behall;
+    } else if (parts[1] === 'spar') { m.spar = el.checked; }
+    else if (parts[1] === 'sparNiva') { if (v == null) { render(); return; } m.sparNiva = Math.max(0, Math.min(5, Math.round(v * 10) / 10)); }
+    else if (parts[1] === 'grans') {
+      const k = KRIT_BY_ID[parts[2]];
+      if (!k || k.typ === 'band') return;
+      const g = Object.assign({}, kritGrans(k));
+      if (v == null) { render(); return; }
+      g[parts[3]] = v;
+      if (g.bra === g.dalig || (g.bra > g.dalig) !== (k.bra > k.dalig)) { render(); toast('Gränserna måste behålla riktningen (' + (k.bra > k.dalig ? 'högre är bättre' : 'lägre är bättre') + ')'); return; }
+      if (g.bra === k.bra && g.dalig === k.dalig) delete m.granser[k.id]; else m.granser[k.id] = g;
+    }
     commitSettings();
   }
 });

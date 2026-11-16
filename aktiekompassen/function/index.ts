@@ -4,6 +4,7 @@
 // Ingen portföljdata passerar eller sparas här – allt ligger i mobilens lagring.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { search, quote, history } from "./lib.ts";
+import { analys, rawSummary, rawTimeseries, peers, rawQuotes, rawChart } from "./analys.ts";
 
 const NAME = "/aktiekompassen";
 const APP_URL = "https://upperia.github.io/policy/aktiekompassen/";
@@ -43,6 +44,18 @@ Deno.serve(async (req: Request) => {
       if (!symbol) return json({ error: "symbol saknas" }, 400);
       return json(await history(fetch, symbol, url.searchParams.get("range") || "1y"), 200, 1800);
     }
+    // Fördjupad analysdata (sex dimensioner): lönsamhet, tillväxt, balans, värdering, utdelning, trend, analytiker, insyn, jämförbara bolag.
+    if (path === "/api/analys") {
+      const symbol = (url.searchParams.get("symbol") || "").trim();
+      if (!symbol) return json({ error: "symbol saknas" }, 400);
+      return json(await analys(fetch, symbol), 200, 3600);
+    }
+    // Råa Yahoo-svar – för att verifiera fält innan appen litar på dem.
+    if (path === "/api/raw/summary") return json(await rawSummary(fetch, url.searchParams.get("symbol") || "", url.searchParams.get("modules") || "price"));
+    if (path === "/api/raw/timeseries") return json(await rawTimeseries(fetch, url.searchParams.get("symbol") || "", url.searchParams.get("types") || "annualTotalRevenue", Number(url.searchParams.get("years") || 6)));
+    if (path === "/api/raw/peers") return json(await peers(fetch, url.searchParams.get("symbol") || ""));
+    if (path === "/api/raw/quotes") return json(await rawQuotes(fetch, (url.searchParams.get("symbols") || "").split(",").filter(Boolean)));
+    if (path === "/api/raw/chart") return json(await rawChart(fetch, url.searchParams.get("symbol") || "", url.searchParams.get("range") || "1y", url.searchParams.get("interval") || "1d", url.searchParams.get("events") || ""));
     if (path === "/api/status") return json({ ok: true, tid: new Date().toISOString(), app: APP_URL });
     if (path === "" || path === "/" || path === "/index.html") return new Response(null, { status: 302, headers: { Location: APP_URL } });
     return json({ error: "Hittades inte" }, 404);
