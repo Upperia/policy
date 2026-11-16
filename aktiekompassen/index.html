@@ -752,7 +752,8 @@ async function api(path, params) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 30000);
   try {
-    const r = await fetch(u.toString(), { headers: { 'x-region': 'us-east-1' }, signal: ctrl.signal });
+    // Ingen webbläsarcache: appen har egen daglig cache för analysen, och kurser ska alltid vara färska.
+    const r = await fetch(u.toString(), { headers: { 'x-region': 'us-east-1' }, signal: ctrl.signal, cache: 'no-store' });
     let j = null;
     try { j = await r.json(); } catch (e) { j = null; }
     if (!r.ok || !j || (j && j.error)) throw new Error((j && j.error) || ('Servern svarade ' + r.status));
@@ -936,7 +937,8 @@ function kritFalt(s, a, ctx, falt) {
     case 'skuld_eff': if (isNum(v.skuld)) return v.skuld; return v.nettokassa === true ? -0.5 : null;
     case 'roe': return isNum(v.roe) && (!isNum(v.solid) || v.solid > 0) ? v.roe : null;
     case 'da': return isNum(v.da) ? v.da : (metricValue(s, 'da', ctx) ?? null);
-    case 'da_rel_5ar': { const da = isNum(v.da) ? v.da : metricValue(s, 'da', ctx); return isNum(da) && da > 0 && isNum(v.da_5ar) && v.da_5ar > 0 ? da / v.da_5ar : null; }
+    // Jämförelsen med egen historik kräver en riktig utdelningshistorik (5-årssnitt minst 0,5 %), annars säger kvoten inget.
+    case 'da_rel_5ar': { const da = isNum(v.da) ? v.da : metricValue(s, 'da', ctx); return isNum(da) && da > 0 && isNum(v.da_5ar) && v.da_5ar >= 0.5 ? da / v.da_5ar : null; }
     case 'utdandel': return isNum(v.utdandel) && v.utdandel > 0 ? v.utdandel : null;
     case 'kurs_rel_ma200': return isNum(v.ma200) && v.ma200 > 0 && s.kurs > 0 ? (s.kurs / v.ma200 - 1) * 100 : null;
     case 'kurs_rel_ma50': return isNum(v.ma50) && v.ma50 > 0 && s.kurs > 0 ? (s.kurs / v.ma50 - 1) * 100 : null;
