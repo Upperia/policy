@@ -391,6 +391,7 @@ input.inline { width: 64px; display: inline-block; padding: 4px 6px; margin: 0 4
 /* Riskregler, tes och säljplan */
 .chip.risk { background: var(--sell-bg); color: var(--sell); border: 1px dashed var(--sell); }
 .sc-verdict .chip.risk { margin-top: 2px; }
+.chip.risk.varn { background: var(--watch-bg); color: var(--watch); border-color: var(--watch); }
 .riskbox { background: var(--surface-2); border-left: 3px solid var(--watch); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
 .riskbox.sankt { border-left-color: var(--sell); }
 .riskbox h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
@@ -1173,8 +1174,8 @@ function bedom(s, ctx) {
   regelSkal.forEach(z => { if (z.d) alla.push({ p: z.d > 0 ? 1 : 0, styrka: z.d / 8, text: z.text, sub: 'din regel · ' + fmtSigned(z.d, 0) + ' poäng' }); });
   const skalFor = alla.filter(z => z.p >= 0.75).sort((p, q) => q.styrka - p.styrka);
   const skalEmot = alla.filter(z => z.p <= 0.25).sort((p, q) => p.styrka - q.styrka);
-  // Riskträffar som sänker beslutet läggs först bland skälen emot.
-  risk.traffar.slice().reverse().forEach(t => { if (t.niva != null && modellNiva != null && t.niva < modellNiva) skalEmot.unshift({ p: 0, styrka: -9, text: t.text, sub: 'riskregel · ' + t.atgardText, risk: true }); });
+  // Utlösta riskregler (minska/sälj-nivå) läggs först bland skälen emot – även när de inte sänker beslutet (t.ex. stop-loss när modellen redan säger Behåll).
+  risk.traffar.slice().reverse().forEach(t => { if (t.niva != null) skalEmot.unshift({ p: 0, styrka: -9, text: t.text, sub: 'riskregel · ' + t.atgardText + (modellNiva != null && t.niva < modellNiva ? '' : ' · ändrar inte beslutet'), risk: true }); });
   const flaggor = (a && a.flaggor) || [];
   return { score, bas: bas == null ? null : Math.round(bas), justering, verdict, modellVerdict: nivaTillVerdict(modellNiva), niva, modellNiva, risk, dims, skalFor, skalEmot, flaggor, regelSkal, sparOk, typ, a, hamtad: an ? an.hamtad : null, ev, owned, stil: m.stil };
 }
@@ -1376,10 +1377,19 @@ function stockCard(x, ctx) {
       '<div class="sc-skal small muted">' + skal + '</div>' +
     '</div>' +
     '<div class="sc-verdict">' + dimsHTML(b.dims) + '<span class="score-pill num">' + (b.score == null ? '–' : b.score) + '</span><span class="chip ' + verdictClass(b.verdict) + '">' + verdictLabel(b.verdict, owned) + '</span>' +
-      (b.modellNiva != null && b.niva < b.modellNiva ? '<span class="chip sm risk" title="Riskregel sänkte beslutet">' + esc((RISK_BY_ID[(b.risk.traffar.find(t => t.niva === b.niva) || {}).id] || { kort: 'Risk' }).kort) + '</span>' : '') + '</div>' +
+      (riskChip(b)) + '</div>' +
   '</li>';
 }
 
+// Chip för utlöst riskregel (sälj/minska/högst behåll): den som sänkte beslutet, annars den allvarligaste utlösta (markerad som varning). Rena varningsregler ger ingen chip.
+function riskChip(b) {
+  if (!b.risk || !b.risk.traffar.length) return '';
+  const sankte = b.modellNiva != null && b.niva < b.modellNiva ? b.risk.traffar.find(t => t.niva === b.niva) : null;
+  const hit = sankte || b.risk.traffar.find(t => t.niva != null);
+  if (!hit) return '';
+  const def = RISK_BY_ID[hit.id] || { kort: hit.id === 'fundamenta' ? 'Fundamenta' : 'Risk' };
+  return '<span class="chip sm risk' + (sankte ? '' : ' varn') + '" title="' + (sankte ? 'Riskregel sänkte beslutet' : 'Riskregel utlöst – ändrar inte beslutet') + '">' + esc(def.kort) + '</span>';
+}
 function renderPortfolio() {
   if (!state.stocks.length) return renderEmpty();
   const ctx = ctxFor(state.stocks);
