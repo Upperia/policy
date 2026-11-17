@@ -13,6 +13,7 @@ Webbapp för den egna aktieportföljen: varje aktie bedöms i sex dimensioner en
 - `GET /api/aktie?symbol=INVE-B.ST` → kurs, valuta, växelkurs till SEK och nyckeltal (`vpa, utd, da, pe, pe_forward, ps, pb, tillv, oms_tillv, roe, marginal, vinstmarginal, skuld, skuld_ek, solid, ev_ebitda, utdandel, hogst52, lagst52, riktkurs, borsvarde, beta`). Hämtas varje timme appen är öppen.
 - `GET /api/analys?symbol=NVDA` → det fördjupade analysunderlaget (se nedan). Hämtas en gång per dag per aktie och sparas lokalt; cachas 6 h i funktionen och 1 h i webbläsaren.
 - `GET /api/historik?symbol=NVDA&range=1y` → dagliga stängningskurser `{ symbol, valuta, priser: [["2026-01-02", 123.4], …] }` (range 3mo/6mo/1y/2y/5y)
+- `GET /api/bt?symbol=ABB.ST` → backtest-underlag: fem års dagliga stängningskurser, utdelningar och årlig VPA (i kursvalutan) `{ symbol, valuta, index, priser, utd, vpa: [{ d, v }], vpaValuta }`; för index (`^OMXSPI`, `^GSPC` …) bara kurser. Cachas 24 h i funktionen.
 - `GET /api/raw/summary|timeseries|peers|quotes|chart` → råa Yahoo-svar, för att verifiera fält innan appen litar på dem.
 - `GET /api/status`
 
@@ -43,6 +44,7 @@ Nyckeltal i `varden` och hur de räknas (`null` när underlag saknas – appen g
 - Styrka: `skuld` = nettoskuld ÷ EBITDA, `skuld_ek`, `solid`, `rantetackning` = EBIT ÷ räntekostnad, `balanslikviditet`, `kassalikviditet`, `zscore`, `utspadning` (antal aktier mot för ett år sedan), `skuldtrend` (långfristig skuld mot föregående bokslut), `nettokassa` (sant/falskt).
 - Utdelning: `da`, `da_5ar`, `utd`, `utdandel`, `utd_tackning` (fritt kassaflöde ÷ utbetald utdelning), `utd_ar_utan_sankning`, `utd_tillvaxt5`.
 - Trend & sentiment: `ma50`, `ma200`, `ma200_riktning`, `rsi`, `avk3m/6m/12m`, `rs3m/6m/12m` (procentenheter mot index), `volatilitet`, `hogst52`, `lagst52`, `beta`, `blankning` (% av fria aktier), `insyn_kop6m`, `insyn_salj6m`, `insyn_andel`, `analytiker_antal`, `analytiker_snitt`, `analytiker_andel_kop`, `analytiker_andel_kop_3m`, `riktkurs`, `borsvarde`, `vpa`.
+- Riskregler och värdering: `vpa_forward` = kurs ÷ forward P/E, `vinst_kvartal_fallande` (kvartal i rad med lägre vinst än samma kvartal året före; `null` när jämförbart kvartal saknas), `vinst_kvartal_yoy`, `vinst_ttm_fallande`/`vinst_ttm_fy` (senaste tolv månadernas vinst mot senaste hela bokslutsåret – eller, när de sammanfaller, mot året före), `utd_sankt` (senaste hela kalenderårets utdelning lägre än året före). `kvartal` listar de fem kvartal Yahoo ger.
 
 Enheter: belopp per aktie och kurser i kursvalutan (pence för Londonaktier), resultat- och balansposter i redovisningsvalutan (`redovisningsvaluta`), växelkursen räknas in där de möts (börsvärde, P/S, P/B, Graham-tal, P/E-historik).
 
@@ -54,8 +56,44 @@ Enheter: belopp per aktie och kurser i kursvalutan (pence för Londonaktier), re
 - Beslut (standardtrösklar, ändringsbara): ≥ 70 Köp mer / Köp, ≥ 50 Behåll / Avvakta, ≥ 35 Minska / Undvik, därunder Sälj / Undvik. Skäl för och emot = de kriterier (och regler) som drar mest, med källa och gräns; röda flaggor kommer från servern.
 - Aktier utan Yahoo-symbol bedöms bara med dina regler (50 ± justeringar).
 
+## Riskregler (säljsidan)
+Riskreglerna kan bara sänka ett beslut, aldrig höja det. Standardvärden (ändras under Regler → Riskregler, varje regel kan stängas av eller få annan åtgärd):
+
+| Regel | Standard | Åtgärd |
+|---|---|---|
+| Stop-loss från GAV | −20 % | villkorad |
+| Glidande stop från högsta kurs sedan köpet | −20 % | villkorad |
+| Maxvikt per aktie | 25 % av portföljen | Minska |
+| Maxvikt per valuta | 50 % av portföljen | Minska (på största innehavet i valutan; övriga får en varning) |
+| Piotroski F-score | under 4 (omräknat till nio delar) | Minska |
+| Fallande vinst | 2 kvartal i rad under samma kvartal året före – eller senaste kvartalet under fjolårets *och* senaste tolv månaderna under senaste bokslutsåret (Yahoo ger bara fem kvartal, så den strikta tvåkvartalsregeln slår sällan) | Minska |
+| Sänkt utdelning | senaste hela kalenderåret lägre än året före | Minska |
+| Kurs under MA200 | mer än 0 % under | varning |
+| Värdering över egen historik | P/E över 90:e percentilen av egen 5-årshistorik | Minska |
+| Egen målkurs / stoppkurs | per aktie under Tes och säljplan | Minska / Sälj |
+
+"Villkorad" = Sälj om fundamenta sviktar (Kvalitet eller Finansiell styrka under spärrnivån 2,5, eller någon fundamenta-regel – F-score, fallande vinst, sänkt utdelning – utlöst), annars högst Behåll (öka inte). Två eller fler fundamenta-signaler samtidigt ger alltid Sälj. Glidande stop räknas från högsta stängningskursen sedan köpdatumet (sätts automatiskt vid första köpet i appen; för importerade innehav från senaste året tills du anger köpdatum). Utlösta regler visas som chip på kortet och i rutan Riskkontroll på aktiesidan, även när de inte ändrar beslutet.
+
+Tes och säljplan: när du registrerar ett köp (eller lägger till ett innehav) frågar appen efter din tes, din säljplan, målkurs och stoppkurs. När beslutet för en aktie ändras visar appen en påminnelse med tesen och säljplanen innan du gör något.
+
+## "Är det ett bra köp?" (analyssidan)
+Rimlig värdering per aktie, med antagandena utskrivna:
+- Graham-tal = √(22,5 × VPA × eget kapital per aktie) – försiktigt värde för mogna bolag.
+- PEG-baserat rimligt P/E = förväntad vinsttillväxt (analytikernas prognos nästa år, begränsad till 8–35) × VPA (Lynch).
+- Diskonterat kassaflöde: fritt kassaflöde per aktie växer med prognosen (max 25 %) i fem år, trappas ned linjärt till 3 % evig tillväxt under fem år, avkastningskrav 9 och 10 % (intervall). Går inte att räkna när fritt kassaflöde är negativt – då sägs det.
+- Baklängesräkning: vilken årlig tillväxt i fritt kassaflöde dagens kurs kräver vid 9,5 % avkastningskrav (bisektion).
+- Analytikernas riktkurs (snitt, låg–hög).
+- Rimligt värde = viktat geometriskt snitt (DCF 2, PEG 1, Graham 1 – 0,5 för tillväxtbolag över 15 % – riktkurs 1). Köpvärd under 0,8 × rimligt, fullvärderad över 1,2 ×. Spretar metoderna mer än 2,5 gånger varnas det. Vinstbaserade metoder hoppas över när vinsten är flaggad som opålitlig.
+- Dessutom: jämförbara bolag (Yahoos lista) med medianer, analytikernas bild (rekommendationer, revideringar, träffsäkerhet, nästa rapport), fem bokslut, senaste kvartal och utdelningshistorik.
+
 ## Facit (beslutslogg)
-Varje gång kurser hämtas (och när regler eller innehav ändras) loggar appen en rad per aktie och dag: kurs, beslut och poäng. Raderna ändras aldrig i efterhand. Facit-fliken visar varje tillfälle då beslutet för en aktie ändrades och hur kursen gått sedan dess – hittills samt 1 vecka, 1 månad och 3 månader efteråt (via `/api/historik`). Köpsidan (Köp, Köp mer) räknas som rätt när kursen stigit, säljsidan (Sälj, Minska, Undvik) när den fallit; Behåll/Avvakta/Bevaka visas som jämförelse. Rader före 2026-11-17 kommer från den gamla regelmodellen (poäng −100…+100).
+Varje gång kurser hämtas (och när regler eller innehav ändras) loggar appen en rad per aktie och dag: kurs, beslut, poäng, dimensionspoäng (`dm`), uppfyllda egna regler (`r`) och riskregler som sänkte beslutet (`rk`). Rader utan analysunderlag (beslut "saknas") loggas inte. Raderna ändras aldrig i efterhand. Facit-fliken visar varje tillfälle då beslutet för en aktie ändrades och hur kursen gått sedan dess – hittills samt 1 vecka, 1 månad och 3 månader efteråt (via `/api/historik`). Köpsidan (Köp, Köp mer) räknas som rätt när kursen stigit, säljsidan (Sälj, Minska, Undvik) när den fallit; Behåll/Avvakta/Bevaka visas som jämförelse. Rader före 2026-11-17 kommer från den gamla regelmodellen (poäng −100…+100).
+
+Facit visar också:
+- **Index över samma period** – aktiens hemmaindex (samma karta som i trenddimensionen) från beslutsdagen, hittills och efter en månad.
+- **Vad förutsäger något?** – snittutveckling en månad efter loggdagen när en dimension var stark (≥ 3,5) respektive svag (< 2), en observation per aktie och vecka. Skillnaden visas från fem observationer i varje grupp.
+- **Regelhälsa** – samma jämförelse för varje egen regel (uppfylld mot inte uppfylld). Från tio observationer med och tio utan regeln föreslås avstängning när en köpregel följts av sämre utveckling (eller en säljregel av bättre) än att inte följa den.
+- **Backtest (tre år)** – för dina aktier och OMXS30 (ungefärlig sammansättning, hårdkodad lista i appen) poängsätts varje månadsskifte med de kriterier som går att räkna bakåt: Trend & sentiment (MA50/MA200, MA200:s riktning, 52-veckors, relativ styrka mot index, RSI) och P/E mot egen historik (kurs ÷ senast kända årsvinst, bokslutet minst 90 dagar gammalt, percentil mot de fem föregående åren), med modellens gränser. Tre stilar: Momentum (trend 2, värde 0,5), Värde light (värde 2, trend 0,5), Balanserad light (1/1). Köpsignal = poäng ≥ köptröskeln, säljsignal < minska-tröskeln. Rapporterar antal signaler, snittavkastning och träffandel 1/3/6 månader (21/63/126 handelsdagar) efter signal, index under samma perioder, säljsignalernas utfall, största nedgång och total avkastning för en likaviktad signalportfölj mot köp-och-behåll av hela urvalet och mot index. Kursavkastning utan utdelningar. **Kvalitet, tillväxt, finansiell styrka och utdelning går inte att backtesta med Yahoos data** (fem kvartal bakåt, prognoser/insyn/blankning bara för nuläget) – det står i appen. Resultatet sparas i `aktiekompassen-backtest`.
 
 ## Datakvalitet från Yahoo
 - Londonaktier noteras i pence (GBp) men vinst och utdelning per aktie anges i pund – funktionen räknar om till pence så att P/E och direktavkastning blir rätt.
@@ -68,14 +106,17 @@ Varje gång kurser hämtas (och när regler eller innehav ändras) loggar appen 
 ## Lokal data (localStorage)
 - `aktiekompassen-v2` – inställningar, aktier och beslutslogg:
 ```
-logg:     [{ d (datum), id, sym, t (ticker), k (kurs), fx, v (beslut), p (poäng) }]
+logg:     [{ d (datum), id, sym, t (ticker), k (kurs), fx, v (beslut), p (poäng), dm (sex dimensionspoäng), r (uppfyllda regel-id), rk (riskregler som sänkte) }]
 settings: { metrics: [{ id, namn, enhet, dec, kalla?, grupp? }], rules: [{ id, metric, op, value, signal, vikt, aktiv, namn }], kopTroskel, saljTroskel,
-            modell: { stil, vikter: { V, K, T, S, U, M }, troskel: { kop, behall, minska }, spar, sparNiva, granser: { <kriterieId>: { bra, dalig } } } }
+            modell: { stil, vikter: { V, K, T, S, U, M }, troskel: { kop, behall, minska }, spar, sparNiva, granser: { <kriterieId>: { bra, dalig } },
+                      risk: { <regelId>: { aktiv, varde, atgard } } } }
 stocks:   [{ id, ticker, symbol, namn, lista, valuta, fxSek, antal, gav, kurs, kursDatum, kursTid, forandring, hamtad, fel, varning,
-             varden: { <metricId>: number }, las: { <metricId>: true }, regler: [...], anteckning, transaktioner: [...], exempel, updatedAt }]
+             varden: { <metricId>: number }, las: { <metricId>: true }, regler: [...], anteckning, transaktioner: [...], exempel, updatedAt,
+             tes, saljplan, malkurs, stoppkurs, kopDatum }]
 ```
 - `aktiekompassen-hist` – kurshistorik per symbol för facit.
 - `aktiekompassen-analys` – dagens analysunderlag per symbol (`{ hamtad, data }`), rensas från aktier som tagits bort.
+- `aktiekompassen-backtest` – senaste backtestresultatet.
 
 Säkerhetskopia (JSON) går att ta och läsa in under Regler → Data. Vid uppgradering från regelmodellen tas standardregler som modellen täcker (P/E, direktavkastning, soliditet, vinsttillväxt, riktkurs, skuld) bort om de är oförändrade; egna och ändrade regler behålls.
 
@@ -83,4 +124,4 @@ Säkerhetskopia (JSON) går att ta och läsa in under Regler → Data. Vid uppgr
 `https://upperia.github.io/policy/aktiekompassen/?innehav=SYMBOL:ANTAL:GAV,SYMBOL:ANTAL:GAV,…` öppnar appen med en bekräftelseruta och lägger till (eller uppdaterar) aktierna. GAV anges i samma enhet som Yahoo använder för symbolen (Londonaktier i pence, t.ex. `RR.L:20:1200`). Inget sparas i länken – den används bara i den enhet där den öppnas.
 
 ## Tester
-Playwright-tester mot mockat API (fixturen ovan) finns i arbetsmappen (`modelltest.mjs`, `facittest.mjs`, `uitest.mjs`); funktionens logik testas i Node med mockad `fetch` (`node --experimental-strip-types analystest.mts`). Live-verifiering görs i webbläsaren mot de riktiga innehaven.
+Playwright-tester mot mockat API (fixturen ovan) ligger i `test/` och körs därifrån: `modelltest.mjs` (analysmodell, stilar, spärr), `risktest.mjs` (riskregler, tes/säljplan, påminnelser), `analyssidatest.mjs` (rimlig värdering, oberoende DCF-kontroll), `backtesttest.mjs` (facit-utökningar och backtest på syntetiska kurser). Funktionens logik testas i Node med mockad `fetch`: `node --experimental-strip-types analystest.mts`. Testportföljerna är påhittade. Live-verifiering görs i webbläsaren mot de riktiga innehaven.
