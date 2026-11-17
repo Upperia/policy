@@ -3,9 +3,9 @@ import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)('playwright');
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
-const OUT = '/tmp/claude-0/-home-claude/4fe84917-fde6-5d0a-bfcd-6413ce28e3ee/scratchpad/fn/';
-const html = readFileSync('/home/claude/aktiekompassen/public/index.html', 'utf8');
-const fixture = JSON.parse(readFileSync('/home/claude/aktiekompassen/test/analys-fixture.json', 'utf8'));
+const OUT = './';
+const html = readFileSync('../index.html', 'utf8');
+const fixture = JSON.parse(readFileSync('./analys-fixture.json', 'utf8'));
 // Fixturen saknar etapp 3-fälten – lägg till rimliga värden (NVDA: inga fallande kvartal; CCC: två fallande kvartal + sänkt utdelning).
 Object.values(fixture).forEach(a => { a.varden.vinst_kvartal_fallande = 0; a.varden.vinst_kvartal_yoy = 10; a.varden.utd_sankt = false; a.varden.vpa_forward = a.varden.pe_forward > 0 ? Math.round(a.kurs / a.varden.pe_forward * 100) / 100 : null; a.opalitlig = a.opalitlig || []; });
 fixture['CCC.L'].varden.vinst_kvartal_fallande = 2; fixture['CCC.L'].varden.utd_sankt = true;

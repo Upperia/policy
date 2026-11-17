@@ -1,6 +1,6 @@
 // Aktiekompassen – service worker. Nätet först, cache som reserv, så att appen öppnar även offline.
 // API-anrop cachas aldrig.
-const CACHE = 'aktiekompassen-v3';
+const CACHE = 'aktiekompassen-v4';
 self.addEventListener('install', () => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));

@@ -115,6 +115,13 @@ const mock = async (url: string) => {
       for (let y = 2016; y <= 2026; y++) { for (const m of [2, 5, 8, 11]) { const d = new Date(y, m, 15); if (d > new Date()) continue; dividends[String(Math.floor(d.getTime() / 1000))] = { amount: y >= 2024 ? 0.01 : 0.004, date: Math.floor(d.getTime() / 1000) }; } }
       return res({ chart: { result: [{ meta: { currency: 'USD' }, timestamp: s.ts, indicators: { quote: [{ close: s.close }] }, events: { dividends } }] } });
     }
+    if (p.get('range') === '5y') {
+      const from = new Date(); from.setDate(from.getDate() - 5 * 365);
+      const s = series(1260, 20, 0.13, from, 1.45);
+      const dividends: Record<string, any> = {};
+      for (let y = 2022; y <= 2026; y++) { for (const m of [2, 5, 8, 11]) { const d = new Date(y, m, 15); if (d > new Date()) continue; dividends[String(Math.floor(d.getTime() / 1000))] = { amount: 0.01, date: Math.floor(d.getTime() / 1000) }; } }
+      return res({ chart: { result: [{ meta: { currency: 'USD' }, timestamp: s.ts, indicators: { quote: [{ close: s.close }] }, events: sym.startsWith('^') ? undefined : { dividends } }] } });
+    }
     if (p.get('range') === '1y') {
       const from = new Date(); from.setDate(from.getDate() - 365);
       const s = sym.startsWith('^') ? series(252, 5000, 6, from, 1.45) : series(252, 110, 0.3, from, 1.45);
@@ -160,3 +167,10 @@ assert(a.flaggor.some((f: string) => f.startsWith('Bara insynsförsäljningar'))
 assert(a.bokslut.length === 5 && a.bokslut[4].vpa === 2.94, 'bokslutsserie');
 // Cache: andra anropet gör inga nya fetchar
 const n = log.length; await analys(mock as any, 'NVDA'); assert(log.length === n, 'cache');
+
+// Backtest-underlag
+import { backtestData } from '../function/analys.ts';
+const bt = await backtestData(mock as any, 'NVDA');
+assert(bt.priser.length > 200 && bt.vpa.length === 5 && bt.index === '^GSPC' && bt.utd.length > 0, 'backtest-underlag (' + bt.priser.length + ' kurser, ' + bt.vpa.length + ' VPA, ' + bt.utd.length + ' utd)');
+const bti = await backtestData(mock as any, '^GSPC');
+assert(bti.priser.length > 0 && bti.vpa.length === 0 && bti.index === null, 'backtest-underlag för index');

@@ -101,6 +101,13 @@ button { font: inherit; color: inherit; }
 .facit .tx td:first-child, .facit .tx th:first-child { padding-left: 0; }
 .facit .tx td.w { min-width: 7ch; }
 .facit .tx .chip.sm { font-size: 9.5px; padding: 1px 5px; }
+.facit .facit-h3 { font-size: 14px; margin: 14px 0 6px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.facit .bt-stil { margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.facit .bt-stil-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.facit .bt-stil .tx { width: 100%; margin: 6px 0; }
+.facit .bt-stil .tx td:first-child { white-space: normal; }
+.facit .tx td .small { font-size: 10.5px; line-height: 1.3; }
+.facit .hint.neg { color: var(--sell); }
 
 /* Sida */
 .wrap { max-width: 760px; margin: 0 auto; padding-block: 16px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
@@ -797,7 +804,13 @@ function normalizeStock(raw, id) {
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : null,
   };
 }
-function normalizeLog(e) { return { d: String(e.d || ''), id: String(e.id || ''), sym: String(e.sym || ''), t: String(e.t || ''), k: num(e.k), fx: num(e.fx) == null ? 1 : num(e.fx), v: String(e.v || 'saknas'), p: num(e.p) }; }
+function normalizeLog(e) {
+  const o = { d: String(e.d || ''), id: String(e.id || ''), sym: String(e.sym || ''), t: String(e.t || ''), k: num(e.k), fx: num(e.fx) == null ? 1 : num(e.fx), v: String(e.v || 'saknas'), p: num(e.p) };
+  if (Array.isArray(e.dm) && e.dm.length === 6) o.dm = e.dm.map(x => num(x));
+  if (Array.isArray(e.r) && e.r.length) o.r = e.r.map(String);
+  if (Array.isArray(e.rk) && e.rk.length) o.rk = e.rk.map(String);
+  return o;
+}
 
 /* ---------- Tillstånd & lagring (bara i den här enheten) ---------- */
 const VIEWS = ['portfolj', 'signaler', 'regler', 'facit'];
@@ -1235,6 +1248,10 @@ function loggaBeslut() {
     if (!(s.kurs > 0)) return;
     const b = bedom(s, ctx);
     const e = { d, id: s.id, sym: s.symbol || '', t: s.ticker, k: s.kurs, fx: s.fxSek || 1, v: b.verdict, p: b.score };
+    // Etapp 5: dimensionspoäng, uppfyllda egna regler och riskregler som sänkte beslutet – för träffsäkerhet per dimension och regel.
+    if (b.score != null) { e.dm = b.dims.map(x => x.poang == null ? null : Math.round(x.poang * 10) / 10); }
+    const r = b.ev.rows.filter(x => x.status === 'uppfylld').map(x => x.rule.id); if (r.length) e.r = r;
+    const rk = b.risk.traffar.filter(t => t.niva != null && b.modellNiva != null && t.niva < b.modellNiva).map(t => t.id); if (rk.length) e.rk = rk;
     const i = state.logg.findIndex(x => x.d === d && x.id === s.id);
     if (i >= 0) { if (JSON.stringify(state.logg[i]) !== JSON.stringify(e)) { state.logg[i] = e; changed = true; } }
     else { state.logg.push(e); changed = true; }
@@ -1711,7 +1728,7 @@ function renderSignals() {
 function renderFacit() {
   const today = todayISO();
   if (!state.logg.length) {
-    return '<div class="card empty">' + compassIcon() + '<h2>Facit kommer med tiden</h2><p>Varje gång kurser hämtas antecknar appen vilket beslut den gav för varje aktie och till vilken kurs. Här ser du sedan hur kursen gick efter varje köp- och säljråd, en vecka, en månad och tre månader senare.</p></div>';
+    return '<div class="facit"><div class="card empty">' + compassIcon() + '<h2>Facit kommer med tiden</h2><p>Varje gång kurser hämtas antecknar appen vilket beslut den gav för varje aktie och till vilken kurs. Här ser du sedan hur kursen gick efter varje köp- och säljråd, en vecka, en månad och tre månader senare.</p></div>' + renderBacktest() + '</div>';
   }
   const events = facitEvents();
   ensureHistory(events);
@@ -1734,17 +1751,263 @@ function renderFacit() {
     return '<div class="tile"><div class="tile-label">' + label + '</div><div class="tile-value num ' + (best.avg == null ? '' : cls(v === 'salj' ? -best.avg : best.avg)) + '">' + (best.avg == null ? '–' : fmtSigned(best.avg, 1) + ' %') + '</div><div class="tile-sub">' + (best.n ? 'snitt ' + bestLabel + ' · ' + fmt(best.hit, 0) + ' % ' + (v === 'salj' ? 'föll' : 'steg') + ' · ' + best.n + ' råd' : 'inga råd att utvärdera ännu') + '</div></div>';
   };
   const cell = r => isNum(r) ? '<span class="' + cls(r) + '">' + fmtSigned(r * 100, 1) + ' %</span>' : '<span class="muted">–</span>';
-  const rows = events.slice(0, 80).map(e => '<tr><td class="w"><b>' + esc(e.t) + '</b><div class="small muted">' + esc(fmtDate(e.d)) + '</div></td><td>' + (e.fran ? '<span class="chip sm ' + verdictClass(e.fran) + '">' + esc(verdictLabel(e.fran, true)) + '</span> → ' : '') + '<span class="chip sm ' + verdictClass(e.v) + '">' + esc(verdictLabel(e.v, true)) + '</span></td><td class="num r">' + cell(utfallNu(e)) + '</td><td class="num r">' + cell(utfall(e, 7)) + '</td><td class="num r">' + cell(utfall(e, 30)) + '</td><td class="num r">' + cell(utfall(e, 90)) + '</td><td class="num r muted">' + fmt(e.k, 2) + '</td></tr>').join('');
   const baseline = stat.bevaka.nu.n + stat.behall.nu.n ? 'Som jämförelse: aktier med Bevaka/Behåll har i snitt gått ' + fmtSigned(((stat.bevaka.nu.avg || 0) * stat.bevaka.nu.n + (stat.behall.nu.avg || 0) * stat.behall.nu.n) / (stat.bevaka.nu.n + stat.behall.nu.n), 1) + ' % sedan beslutet.' : '';
+  // Index över samma period (etapp 5): hämtas som vanlig historik för de index aktierna hör till.
+  ensureIndexHistory();
+  const idxCell = (e, dagarN) => { const r = indexUtfall(e, dagarN); return isNum(r) ? '<span class="' + cls(r) + '">' + fmtSigned(r * 100, 1) + ' %</span>' : '<span class="muted">–</span>'; };
+  const rowsIdx = events.slice(0, 80).map(e => '<tr><td class="w"><b>' + esc(e.t) + '</b><div class="small muted">' + esc(fmtDate(e.d)) + '</div></td><td>' + (e.fran ? '<span class="chip sm ' + verdictClass(e.fran) + '">' + esc(verdictLabel(e.fran, true)) + '</span> → ' : '') + '<span class="chip sm ' + verdictClass(e.v) + '">' + esc(verdictLabel(e.v, true)) + '</span></td><td class="num r">' + cell(utfallNu(e)) + '<div class="small muted">idx ' + idxCell(e, 'nu') + '</div></td><td class="num r">' + cell(utfall(e, 7)) + '</td><td class="num r">' + cell(utfall(e, 30)) + '<div class="small muted">idx ' + idxCell(e, 30) + '</div></td><td class="num r">' + cell(utfall(e, 90)) + '</td><td class="num r muted">' + fmt(e.k, 2) + '</td></tr>').join('');
   return '<div class="facit">' +
     '<section class="summary" style="grid-template-columns:1fr 1fr">' + tile('kop', 'Köpråd') + tile('salj', 'Säljråd') + '</section>' +
     '<section class="card"><div class="card-head"><h2>Beslut och utfall</h2><span class="hint">' + (histLoading ? '<span class="spinner"></span> hämtar historik…' : 'Loggat sedan ' + esc(fmtDate(first)) + ' · ' + dagar + (dagar === 1 ? ' dag' : ' dagar')) + '</span></div>' +
-      '<p class="lead">Varje rad är ett tillfälle då appens beslut för en aktie ändrades. Utvecklingen räknas från kursen den dagen. ' + baseline + '</p>' +
-      '<div class="table-scroll"><table class="tx"><thead><tr><th>Aktie</th><th>Beslut</th><th class="r">Hittills</th><th class="r">1 v</th><th class="r">1 mån</th><th class="r">3 mån</th><th class="r">Kurs då</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="lead">Varje rad är ett tillfälle då appens beslut för en aktie ändrades. Utvecklingen räknas från kursen den dagen; "idx" är aktiens hemmaindex över samma period. ' + baseline + '</p>' +
+      '<div class="table-scroll"><table class="tx"><thead><tr><th>Aktie</th><th>Beslut</th><th class="r">Hittills</th><th class="r">1 v</th><th class="r">1 mån</th><th class="r">3 mån</th><th class="r">Kurs då</th></tr></thead><tbody>' + rowsIdx + '</tbody></table></div>' +
       (events.length > 80 ? '<p class="hint">Visar de 80 senaste av ' + events.length + '.</p>' : '') +
     '</section>' +
+    renderTraffsakerhet() +
+    renderBacktest() +
     '<p class="hint center">' + (dagar < 60 ? 'Träffsäkerhet går att bedöma först efter några månader och ett tjugotal råd. ' : '') + 'Råd före ' + esc(fmtDate('2026-11-17')) + ' kommer från den gamla regelmodellen (poäng −100…+100), senare från analysmodellen (0–100). Loggen sparas bara i den här enheten och följer med i säkerhetskopian.</p>' +
   '</div>';
+}
+
+/* ---------- Etapp 5: träffsäkerhet per dimension och regel, index, regelhälsa ---------- */
+// Hemmaindex per symbol (samma regel som servern).
+function indexFor(symbol) {
+  const suf = symbol && symbol.indexOf('.') >= 0 ? symbol.slice(symbol.lastIndexOf('.') + 1).toUpperCase() : '';
+  if (suf === 'ST') return '^OMXSPI'; if (suf === 'L') return '^FTSE'; if (suf === 'TO' || suf === 'V') return '^GSPTSE'; if (suf === 'CO') return '^OMXC25'; if (suf === 'HE') return '^OMXH25'; if (suf === 'OL') return '^OSEAX';
+  if (['AS', 'PA', 'DE', 'F', 'MI', 'MC', 'BR', 'SW', 'VI', 'LS'].indexOf(suf) >= 0) return '^STOXX50E';
+  return '^GSPC';
+}
+let idxLoading = false;
+function ensureIndexHistory() {
+  if (idxLoading || !state.online) return;
+  const need = {};
+  state.logg.forEach(e => { if (!e.sym) return; const ix = indexFor(e.sym); const h = state.hist[ix]; if (!h || !h.hamtad || Date.now() - Date.parse(h.hamtad) > 20 * 3600 * 1000) need[ix] = Math.max(need[ix] || 0, daysSince(e.d) || 0); });
+  const syms = Object.keys(need);
+  if (!syms.length) return;
+  idxLoading = true;
+  (async () => {
+    for (const sym of syms) {
+      const age = need[sym], range = age > 700 ? '5y' : age > 330 ? '2y' : '1y';
+      try { const h = await api('/historik', { symbol: sym, range }); if (h && Array.isArray(h.priser)) state.hist[sym] = { hamtad: new Date().toISOString(), valuta: h.valuta || null, priser: h.priser }; }
+      catch (e) { state.hist[sym] = state.hist[sym] || { hamtad: new Date().toISOString(), priser: [] }; }
+    }
+    store.saveHist();
+    idxLoading = false;
+    if (state.view === 'facit') render();
+  })();
+}
+function indexUtfall(e, dagarN) {
+  if (!e.sym) return null;
+  const ix = indexFor(e.sym), h = state.hist[ix];
+  if (!h || !Array.isArray(h.priser) || !h.priser.length) return null;
+  const start = histPriceAt(ix, e.d);
+  const slutDatum = dagarN === 'nu' ? todayISO() : addDays(e.d, dagarN);
+  if (slutDatum > todayISO()) return null;
+  let slut = null;
+  if (dagarN === 'nu') slut = h.priser[h.priser.length - 1][1]; else slut = histPriceAt(ix, slutDatum);
+  return isNum(start) && isNum(slut) && start > 0 ? slut / start - 1 : null;
+}
+// Utfall 1 mån för en loggrad (dagens poäng → kursen 30 dagar senare).
+function loggUtfall(e, dagarN) { return utfall(e, dagarN); }
+function renderTraffsakerhet() {
+  // En observation per aktie och vecka för att inte räkna samma situation 7 gånger.
+  const sedda = {}, obs = [];
+  state.logg.slice().sort((a, b) => a.d.localeCompare(b.d)).forEach(e => {
+    if (!e.dm || !e.sym) return;
+    const vecka = e.id + ':' + Math.floor(Date.parse(e.d) / (7 * 86400000));
+    if (sedda[vecka]) return; sedda[vecka] = true;
+    const r30 = utfall(e, 30); if (!isNum(r30)) return;
+    obs.push({ e, r30, idx30: indexUtfall(e, 30) });
+  });
+  const n = obs.length;
+  const snitt = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length * 100 : null;
+  let dimRows = '';
+  DIMS.forEach((d, i) => {
+    const hi = obs.filter(o => isNum(o.e.dm[i]) && o.e.dm[i] >= 3.5).map(o => o.r30), lo = obs.filter(o => isNum(o.e.dm[i]) && o.e.dm[i] < 2).map(o => o.r30);
+    const diff = hi.length >= 5 && lo.length >= 5 ? snitt(hi) - snitt(lo) : null;
+    dimRows += '<tr><td>' + esc(d.namn) + '</td><td class="num r">' + (hi.length ? '<span class="' + cls(snitt(hi)) + '">' + fmtSigned(snitt(hi), 1) + ' %</span> <span class="muted small">(' + hi.length + ')</span>' : '<span class="muted">–</span>') + '</td><td class="num r">' + (lo.length ? '<span class="' + cls(snitt(lo)) + '">' + fmtSigned(snitt(lo), 1) + ' %</span> <span class="muted small">(' + lo.length + ')</span>' : '<span class="muted">–</span>') + '</td><td class="num r">' + (diff == null ? '<span class="muted">–</span>' : '<b class="' + cls(diff) + '">' + fmtSigned(diff, 1) + '</b>') + '</td></tr>';
+  });
+  // Regler: 1-månadsutfall när regeln var uppfylld mot när den inte var det.
+  const regler = state.settings.rules.slice();
+  state.stocks.forEach(s => s.regler.forEach(r => regler.push(Object.assign({ aktieTicker: s.ticker }, r))));
+  let regelRows = '', halsa = [];
+  regler.forEach(r => {
+    const med = obs.filter(o => o.e.r && o.e.r.indexOf(r.id) >= 0).map(o => o.r30), utan = obs.filter(o => !o.e.r || o.e.r.indexOf(r.id) < 0).map(o => o.r30);
+    const diff = med.length >= 10 && utan.length >= 10 ? snitt(med) - snitt(utan) : null;
+    const dalig = diff != null && ((r.signal === 'kop' && diff < -1) || (r.signal === 'salj' && diff > 1));
+    if (dalig) halsa.push(r);
+    regelRows += '<tr><td>' + esc(r.namn || r.metric) + (r.aktieTicker ? ' <span class="muted small">' + esc(r.aktieTicker) + '</span>' : '') + ' <span class="chip sm ' + r.signal + '">' + SIG[r.signal] + '</span></td><td class="num r">' + (med.length ? '<span class="' + cls(snitt(med)) + '">' + fmtSigned(snitt(med), 1) + ' %</span> <span class="muted small">(' + med.length + ')</span>' : '<span class="muted">–</span>') + '</td><td class="num r">' + (utan.length ? fmtSigned(snitt(utan), 1) + ' %' : '–') + '</td><td class="num r">' + (diff == null ? '<span class="muted">–</span>' : (dalig ? '<b class="neg">' + fmtSigned(diff, 1) + ' ⚠</b>' : '<span class="' + cls(r.signal === 'salj' ? -diff : diff) + '">' + fmtSigned(diff, 1) + '</span>')) + '</td></tr>';
+  });
+  // Index över samma period
+  const medIdx = obs.filter(o => isNum(o.idx30));
+  const idxText = medIdx.length ? 'Aktierna i loggen har i snitt gått ' + fmtSigned(snitt(medIdx.map(o => o.r30)), 1) + ' % på en månad efter loggdagen, hemmaindex ' + fmtSigned(snitt(medIdx.map(o => o.idx30)), 1) + ' % (' + medIdx.length + ' observationer).' : '';
+  return '<section class="card"><div class="card-head"><h2>Vad förutsäger något?</h2><span class="hint">' + n + ' observationer med 1-månadsutfall</span></div>' +
+    '<p class="lead">Snittutveckling <b>en månad efter loggdagen</b> när en dimension var stark (≥ 3,5) respektive svag (&lt; 2), och när en egen regel var uppfylld eller inte (antal observationer inom parentes). Skillnaden (procentenheter) visas först vid fem observationer i varje grupp för dimensioner och tio för regler. En observation per aktie och vecka. ' + idxText + '</p>' +
+    '<div class="table-scroll"><table class="tx"><thead><tr><th>Dimension</th><th class="r">Stark</th><th class="r">Svag</th><th class="r">Skillnad</th></tr></thead><tbody>' + dimRows + '</tbody></table></div>' +
+    '<h3 class="facit-h3">Regelhälsa</h3>' +
+    (regler.length ? '<div class="table-scroll"><table class="tx"><thead><tr><th>Regel</th><th class="r">Uppfylld</th><th class="r">Annars</th><th class="r">Skillnad</th></tr></thead><tbody>' + regelRows + '</tbody></table></div>' : '<p class="hint">Inga egna regler.</p>') +
+    (halsa.length ? '<p class="hint neg"><b>Förslag:</b> ' + esc(halsa.map(r => r.namn || r.metric).join(', ')) + ' har sämre historik än att inte följa regeln – överväg att stänga av under Regler.</p>' : '<p class="hint">Regelhälsa kräver minst tio observationer med och tio utan regeln (loggen samlar en per aktie och vecka). Förslag om avstängning kommer när en regel visat sig sämre än att inte följa den.</p>') +
+  '</section>';
+}
+
+/* ---------- Etapp 5: backtest av kurs- och trendbaserade kriterier ---------- */
+const BT_KEY = 'aktiekompassen-backtest';
+// OMXS30, ungefärlig sammansättning (indexet ändras två gånger om året).
+const OMXS30 = ['ABB.ST', 'ALFA.ST', 'ASSA-B.ST', 'ATCO-A.ST', 'ATCO-B.ST', 'AZN.ST', 'BOL.ST', 'ELUX-B.ST', 'ERIC-B.ST', 'ESSITY-B.ST', 'EVO.ST', 'GETI-B.ST', 'HEXA-B.ST', 'HM-B.ST', 'INVE-B.ST', 'KINV-B.ST', 'NDA-SE.ST', 'NIBE-B.ST', 'SAAB-B.ST', 'SAND.ST', 'SCA-B.ST', 'SEB-A.ST', 'SHB-A.ST', 'SINCH.ST', 'SKF-B.ST', 'SWED-A.ST', 'TEL2-B.ST', 'TELIA.ST', 'VOLV-B.ST'];
+const BT_STILAR = [
+  { id: 'momentum', namn: 'Momentum', beskr: 'trenddimensionen (vikt 2) + P/E mot egen historik (0,5)', vM: 2, vV: 0.5 },
+  { id: 'varde', namn: 'Värde (light)', beskr: 'P/E mot egen historik (vikt 2) + trend (0,5)', vM: 0.5, vV: 2 },
+  { id: 'balanserad', namn: 'Balanserad (light)', beskr: 'trend och P/E mot egen historik lika', vM: 1, vV: 1 },
+];
+let btState = { running: false, done: 0, total: 0, fel: [] };
+function btLoad() { try { const r = JSON.parse(localStorage.getItem(BT_KEY) || 'null'); return r && r.resultat ? r : null; } catch (e) { return null; } }
+// Poäng för trend- och värderingskriterier vid index i (dagliga stängningskurser c, index ix) – samma kriterier och gränser som modellen.
+function btTrendPoang(c, i, ixC, ixMap) {
+  const kurs = c[i];
+  const sma = (n) => { if (i + 1 < n) return null; let s = 0; for (let k = i - n + 1; k <= i; k++) s += c[k]; return s / n; };
+  const ma50 = sma(50), ma200 = sma(200);
+  let ma200fg = null; if (i - 40 + 1 >= 200) { let s = 0; for (let k = i - 40 - 200 + 1; k <= i - 40; k++) s += c[k]; ma200fg = s / 200; }
+  let hi = -Infinity, lo = Infinity; for (let k = Math.max(0, i - 251); k <= i; k++) { if (c[k] > hi) hi = c[k]; if (c[k] < lo) lo = c[k]; }
+  const ret = n => i - n >= 0 && c[i - n] > 0 ? (kurs / c[i - n] - 1) * 100 : null;
+  let rsi = null; if (i >= 14) { let g = 0, l = 0; for (let k = i - 13; k <= i; k++) { const d = c[k] - c[k - 1]; if (d > 0) g += d; else l -= d; } rsi = g + l === 0 ? 50 : l === 0 ? 100 : 100 - 100 / (1 + (g / 14) / (l / 14)); }
+  const ixRet = n => { if (!ixC) return null; const j = ixMap[i], j0 = ixMap[i - n]; return j != null && j0 != null && ixC[j0] > 0 ? (ixC[j] / ixC[j0] - 1) * 100 : null; };
+  const r3 = ret(63), r12 = ret(252), i3 = ixRet(63), i12 = ixRet(252);
+  const vals = {
+    m_ma200: ma200 ? (kurs / ma200 - 1) * 100 : null, m_ma50: ma50 ? (kurs / ma50 - 1) * 100 : null, m_ma200dir: ma200 && ma200fg ? (ma200 / ma200fg - 1) * 100 : null,
+    m_cross: ma50 && ma200 ? (ma50 / ma200 - 1) * 100 : null, m_52h: isFinite(hi) ? (kurs / hi - 1) * 100 : null, m_52l: isFinite(lo) && lo > 0 ? (kurs / lo - 1) * 100 : null,
+    m_rs3: r3 != null && i3 != null ? r3 - i3 : null, m_rs12: r12 != null && i12 != null ? r12 - i12 : null, m_rsi: rsi,
+  };
+  let sum = 0, w = 0, n = 0;
+  Object.keys(vals).forEach(id => { const k = KRIT_BY_ID[id]; const p = kritPoang(k, vals[id]); if (p != null) { sum += p * k.vikt; w += k.vikt; n++; } });
+  return n >= 4 && w > 0 ? sum / w * 5 : null;
+}
+function btVardePoang(c, dates, i, vpa) {
+  // P/E vid dag i = kurs / senast kända årsvinst (bokslut minst 90 dagar gammalt); percentil mot egen historik fram till i.
+  if (!vpa || !vpa.length) return null;
+  const epsAt = (d) => { let e = null; for (let k = vpa.length - 1; k >= 0; k--) { if (addDays(vpa[k].d, 90) <= d) { e = vpa[k].v; break; } } return e; };
+  const e = epsAt(dates[i]); if (!(e > 0)) return null;
+  const pe = c[i] / e;
+  const hist = [];
+  for (let k = Math.max(0, i - 1260); k < i; k += 21) { const ek = epsAt(dates[k]); if (ek > 0) hist.push(c[k] / ek); }
+  if (hist.length < 12) return null;
+  const pct = hist.filter(x => x < pe).length / hist.length * 100;
+  const p = kritPoang(KRIT_BY_ID.v_pehist, pct);
+  return p == null ? null : p * 5;
+}
+async function korBacktest() {
+  if (btState.running) return;
+  const egna = state.stocks.filter(s => s.symbol).map(s => s.symbol);
+  const univers = [{ id: 'egna', namn: 'Mina aktier', syms: egna }, { id: 'omxs30', namn: 'OMXS30', syms: OMXS30 }];
+  const alla = Array.from(new Set(egna.concat(OMXS30)));
+  const idx = Array.from(new Set(alla.map(indexFor)));
+  btState = { running: true, done: 0, total: alla.length + idx.length, fel: [] };
+  render();
+  const data = {};
+  const ko = idx.concat(alla);
+  // Tre hämtningar i taget – servern hämtar fem års kurser och vinsthistorik per symbol.
+  await Promise.all([0, 1, 2].map(async () => {
+    while (ko.length) {
+      const sym = ko.shift();
+      try { data[sym] = await api('/bt', { symbol: sym }); } catch (e) { btState.fel.push(sym); }
+      btState.done++;
+      if (state.view === 'facit') { const el = $('#bt-progress'); if (el) el.textContent = btState.done + ' av ' + btState.total; }
+    }
+  }));
+  const m = state.settings.modell;
+  const startDag = addDays(todayISO(), -3 * 365);
+  const resultat = {};
+  const perAktie = {};
+  univers.forEach(u => {
+    const stil = {};
+    BT_STILAR.forEach(st => { stil[st.id] = { kop: { r1: [], r3: [], r6: [], i1: [], i3: [], i6: [] }, salj: { r1: [], r3: [], r6: [] }, alla: { r1: [], r3: [], r6: [] }, manader: {} }; });
+    const portf = {}; // månad → avkastningar för köpsignalerade (likaviktat), alla, index
+    u.syms.forEach(sym => {
+      const d = data[sym]; if (!d || !d.priser || d.priser.length < 300) return;
+      const dates = d.priser.map(p => p[0]), c = d.priser.map(p => p[1]);
+      const ixD = data[indexFor(sym)]; const ixC = ixD ? ixD.priser.map(p => p[1]) : null; const ixDates = ixD ? ixD.priser.map(p => p[0]) : null;
+      // karta dag → närmaste indexdag (samma eller tidigare)
+      const ixMap = []; if (ixDates) { let j = 0; for (let i = 0; i < dates.length; i++) { while (j + 1 < ixDates.length && ixDates[j + 1] <= dates[i]) j++; ixMap[i] = ixDates[j] <= dates[i] ? j : null; } }
+      // månadsslut
+      const me = []; for (let i = 0; i < dates.length - 1; i++) { if (dates[i].slice(0, 7) !== dates[i + 1].slice(0, 7)) me.push(i); }
+      me.forEach(i => {
+        if (dates[i] < startDag || i < 260) return;
+        const M = btTrendPoang(c, i, ixC, ixMap), V = btVardePoang(c, dates, i, d.vpa);
+        const fwd = n => i + n < c.length ? c[i + n] / c[i] - 1 : null;
+        const ifwd = n => { if (!ixC) return null; const j = ixMap[i], j2 = ixMap[Math.min(dates.length - 1, i + n)]; return i + n < c.length && j != null && j2 != null ? ixC[j2] / ixC[j] - 1 : null; };
+        const r1 = fwd(21), r3 = fwd(63), r6 = fwd(126), i1 = ifwd(21), i3 = ifwd(63), i6 = ifwd(126);
+        BT_STILAR.forEach(st => {
+          if (M == null && V == null) return;
+          const w = (M != null ? st.vM : 0) + (V != null ? st.vV : 0);
+          const score = ((M != null ? M * st.vM : 0) + (V != null ? V * st.vV : 0)) / w * 20;
+          const S = stil[st.id];
+          const push = (g) => { if (r1 != null) { S[g].r1.push(r1); if (g === 'kop') S[g].i1.push(i1); } if (r3 != null) { S[g].r3.push(r3); if (g === 'kop') S[g].i3.push(i3); } if (r6 != null) { S[g].r6.push(r6); if (g === 'kop') S[g].i6.push(i6); } };
+          push('alla');
+          const man = dates[i].slice(0, 7);
+          S.manader[man] = S.manader[man] || { kop: [], alla: [], idx: [] };
+          if (r1 != null) { S.manader[man].alla.push(r1); if (i1 != null) S.manader[man].idx.push(i1); }
+          const pa = st.id === 'balanserad' ? (perAktie[sym] = perAktie[sym] || { kop: [], salj: [] }) : null;
+          if (score >= m.troskel.kop) { push('kop'); if (r1 != null) S.manader[man].kop.push(r1); if (pa && r3 != null) pa.kop.push(r3); }
+          else if (score < m.troskel.minska) { push('salj'); if (pa && r3 != null) pa.salj.push(r3); }
+        });
+      });
+    });
+    // Sammanställning
+    const snitt = a => { const b = a.filter(isNum); return b.length ? b.reduce((x, y) => x + y, 0) / b.length * 100 : null; };
+    const traff = (a, neg) => { const b = a.filter(isNum); return b.length ? b.filter(x => neg ? x < 0 : x > 0).length / b.length * 100 : null; };
+    const maxDD = (serie) => { let topp = 1, v = 1, dd = 0; serie.forEach(r => { v *= 1 + r; if (v > topp) topp = v; dd = Math.max(dd, 1 - v / topp); }); return { dd: dd * 100, total: (v - 1) * 100 }; };
+    resultat[u.id] = { namn: u.namn, antal: u.syms.filter(s => data[s] && data[s].priser && data[s].priser.length >= 300).length, stilar: {} };
+    BT_STILAR.forEach(st => {
+      const S = stil[st.id];
+      const man = Object.keys(S.manader).sort();
+      const kurvaKop = man.map(k => { const a = S.manader[k].kop; return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; });
+      const kurvaAlla = man.map(k => { const a = S.manader[k].alla; return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; });
+      const kurvaIdx = man.map(k => { const a = S.manader[k].idx; return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; });
+      resultat[u.id].stilar[st.id] = {
+        kopN: S.kop.r1.length, saljN: S.salj.r1.length, allaN: S.alla.r1.length,
+        kop: { s1: snitt(S.kop.r1), s3: snitt(S.kop.r3), s6: snitt(S.kop.r6), t1: traff(S.kop.r1), t3: traff(S.kop.r3), t6: traff(S.kop.r6), i1: snitt(S.kop.i1), i3: snitt(S.kop.i3), i6: snitt(S.kop.i6) },
+        salj: { s1: snitt(S.salj.r1), s3: snitt(S.salj.r3), s6: snitt(S.salj.r6), t1: traff(S.salj.r1, true), t3: traff(S.salj.r3, true), t6: traff(S.salj.r6, true) },
+        alla: { s1: snitt(S.alla.r1), s3: snitt(S.alla.r3), s6: snitt(S.alla.r6) },
+        portf: maxDD(kurvaKop), buyhold: maxDD(kurvaAlla), index: maxDD(kurvaIdx), manader: man.length,
+      };
+    });
+  });
+  const aktier = Object.keys(perAktie).map(sym => { const p = perAktie[sym]; const s3 = a => { const b = a.filter(isNum); return b.length ? b.reduce((x, y) => x + y, 0) / b.length * 100 : null; }; return { sym, kopN: p.kop.length, kop3: s3(p.kop), saljN: p.salj.length, salj3: s3(p.salj) }; });
+  const out = { kord: new Date().toISOString(), fran: startDag, troskel: { kop: m.troskel.kop, minska: m.troskel.minska }, resultat, aktier, fel: btState.fel, antalSymboler: alla.length };
+  try { localStorage.setItem(BT_KEY, JSON.stringify(out)); } catch (e) { /* visas ändå */ }
+  btState.running = false;
+  btState.senast = out;
+  render();
+}
+function renderBacktest() {
+  const r = btState.senast || btLoad();
+  const knapp = '<button class="btn primary sm" data-action="kor-backtest"' + (btState.running ? ' disabled' : '') + '>' + (btState.running ? 'Kör… <span id="bt-progress">' + btState.done + ' av ' + btState.total + '</span>' : (r ? 'Kör igen' : 'Kör backtest')) + '</button>';
+  const intro = '<p class="lead">Hur hade trend- och värderingskriterierna fungerat de senaste tre åren? Varje månadsskifte poängsätts varje aktie med Trend &amp; sentiment-kriterierna (MA50/MA200, 52-veckors, relativ styrka mot index, RSI) och P/E mot egen historik (kurs ÷ senast kända årsvinst), med samma gränser som i modellen. Poäng ≥ ' + state.settings.modell.troskel.kop + ' = köpsignal, &lt; ' + state.settings.modell.troskel.minska + ' = säljsignal. Kursavkastning utan utdelningar.</p>' +
+    '<p class="hint"><b>Går inte att backtesta med Yahoos data:</b> kvalitet, tillväxt, finansiell styrka och utdelningsdimensionerna kräver kvartalshistorik flera år bakåt (Yahoo ger fem kvartal), analytikerprognoser, insyn och blankning finns bara för nuläget. Det här testet säger alltså något om trend- och värderingsdelen av modellen, inte om helheten.</p>';
+  if (!r) return '<section class="card"><div class="card-head"><h2>Backtest</h2>' + knapp + '</div>' + intro + '<p class="hint">Hämtar fem års kurser för dina aktier, OMXS30 (ungefärlig sammansättning) och index – tar ungefär en minut.</p></section>';
+  const pc = (v, dec) => isNum(v) ? '<span class="' + cls(v) + '">' + fmtSigned(v, dec == null ? 1 : dec) + ' %</span>' : '<span class="muted">–</span>';
+  const pct0 = v => isNum(v) ? fmt(v, 0) + ' %' : '–';
+  const tabeller = Object.keys(r.resultat).map(uid => {
+    const u = r.resultat[uid];
+    const block = BT_STILAR.map(st => {
+      const x = u.stilar[st.id]; if (!x) return '';
+      const rad = (lbl, s, t, i) => '<tr><td>' + lbl + '</td><td class="num r">' + pc(s) + '</td><td class="num r muted">' + pct0(t) + '</td><td class="num r muted">' + pc(i) + '</td></tr>';
+      return '<div class="bt-stil"><div class="bt-stil-head"><b>' + esc(st.namn) + '</b><span class="hint">' + x.kopN + ' köpsignaler · ' + x.saljN + ' sälj</span></div><div class="small muted">' + esc(st.beskr) + '</div>' +
+        '<table class="tx bt"><thead><tr><th>Efter köpsignal</th><th class="r">Snitt</th><th class="r">Träff</th><th class="r">Index</th></tr></thead><tbody>' +
+        rad('1 mån', x.kop.s1, x.kop.t1, x.kop.i1) + rad('3 mån', x.kop.s3, x.kop.t3, x.kop.i3) + rad('6 mån', x.kop.s6, x.kop.t6, x.kop.i6) +
+        '<tr><td>Säljsignal → 3 mån</td><td class="num r">' + pc(x.salj.s3) + '</td><td class="num r muted">' + pct0(x.salj.t3) + '</td><td class="num r muted">–</td></tr>' +
+        '</tbody></table>' +
+        '<div class="small muted">Signalportfölj: största nedgång ' + (isNum(x.portf.dd) ? fmt(x.portf.dd, 0) + ' %' : '–') + ', totalt ' + pc(x.portf.total, 0) + ' över perioden.</div></div>';
+    }).join('');
+    const bh = u.stilar.balanserad || u.stilar.momentum;
+    return '<h3 class="facit-h3">' + esc(u.namn) + ' <span class="hint">' + u.antal + ' aktier · ' + (bh ? bh.manader + ' månader' : '') + '</span></h3>' + block +
+      (bh ? '<p class="hint">Jämförelse: alla månader och aktier i urvalet gav i snitt ' + pc(bh.alla.s1) + ' / ' + pc(bh.alla.s3) + ' / ' + pc(bh.alla.s6) + ' på 1/3/6 mån. Köp-och-behåll av hela urvalet: största nedgång ' + fmt(bh.buyhold.dd, 0) + ' % (totalt ' + pc(bh.buyhold.total, 0) + '); index ' + fmt(bh.index.dd, 0) + ' % (totalt ' + pc(bh.index.total, 0) + '). "Träff" = andel signaler som följdes av uppgång (för sälj: nedgång). Signalportfölj = likaviktad portfölj som varje månad äger alla aktier med köpsignal, annars kontanter.</p>' : '');
+  }).join('');
+  const basta = r.aktier.filter(a => a.kopN >= 3).sort((a, b) => (b.kop3 || 0) - (a.kop3 || 0)).slice(0, 5), samsta = r.aktier.filter(a => a.kopN >= 3).sort((a, b) => (a.kop3 || 0) - (b.kop3 || 0)).slice(0, 5);
+  const lista = arr => arr.map(a => esc(a.sym.replace(/\.[A-Z]+$/, '')) + ' ' + fmtSigned(a.kop3, 0) + ' % (' + a.kopN + ')').join(', ');
+  return '<section class="card"><div class="card-head"><h2>Backtest</h2>' + knapp + '</div>' + intro + tabeller +
+    (r.aktier.length ? '<p class="hint">Köpsignaler per aktie med Balanserad (light), snitt 3 mån efter signal (antal signaler): bäst ' + lista(basta) + '. Sämst ' + lista(samsta) + '.</p>' : '') +
+    '<p class="hint">Kört ' + esc(fmtTime(r.kord)) + ' · period från ' + esc(fmtDate(r.fran)) + ' · trösklar köp ≥ ' + r.troskel.kop + ', sälj &lt; ' + r.troskel.minska + (r.fel && r.fel.length ? ' · kunde inte hämtas: ' + esc(r.fel.join(', ')) : '') + '. Historiska utfall säger inget säkert om framtiden; få signaler ger stora slumpfel.</p>' +
+  '</section>';
 }
 
 function renderModell() {
@@ -2125,6 +2388,7 @@ app.addEventListener('click', e => {
     case 'dismiss-upgrade': state.uppgraderad = false; render(); break;
     case 'edit-tes': if (s) tesSheet(s.id, false); break;
     case 'reset-risk': state.settings.modell.risk = clone(DEFAULT_RISK); commitSettings(); toast('Riskreglerna återställda'); break;
+    case 'kor-backtest': if (!state.online) { toast('Backtest kräver uppkoppling'); break; } korBacktest().catch(err => { btState.running = false; toast('Backtesten gick inte: ' + err.message); render(); }); break;
     case 'refresh-analys': if (s) { toast('Hämtar analys för ' + s.ticker + '…'); refreshStock(s.id, { forceAnalys: true }).then(() => toast(s.analysFel ? 'Analysen gick inte: ' + s.analysFel : s.ticker + ' analyserad'), err => toast('Gick inte: ' + err.message)); } break;
     case 'set-stil': if (STILAR[id]) { state.settings.modell.stil = id; state.settings.modell.vikter = clone(STILAR[id].vikter); commitSettings(); toast('Stil: ' + STILAR[id].namn); } break;
     case 'reset-grans': delete state.settings.modell.granser[id]; commitSettings(); break;
