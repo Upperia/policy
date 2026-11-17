@@ -407,6 +407,32 @@ input.inline { width: 64px; display: inline-block; padding: 4px 6px; margin: 0 4
 .rr-in input { width: 70px; padding: 4px 6px; margin: 0 4px; }
 .rr-in select { padding: 4px 6px; max-width: 100%; }
 
+/* "Är det ett bra köp?" */
+.analys-sida h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 14px 0 6px; }
+.analys-sida .card-head + h3 { margin-top: 4px; }
+.rv-sammanfattning { border-radius: 10px; padding: 10px 12px; background: var(--surface-2); border-left: 3px solid var(--hold); }
+.rv-sammanfattning.hi { border-left-color: var(--buy); } .rv-sammanfattning.lo { border-left-color: var(--sell); } .rv-sammanfattning.mid { border-left-color: var(--watch); }
+.rv-slutsats { font-size: 14px; line-height: 1.45; }
+.rv-skala { position: relative; height: 10px; margin: 10px 0 4px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.rv-zon { position: absolute; top: 0; height: 100%; opacity: .5; }
+.rv-zon.kop { background: var(--buy); } .rv-zon.neutral { background: var(--watch); } .rv-zon.salj { background: var(--sell); }
+.rv-m { position: absolute; top: -3px; width: 3px; height: 16px; margin-left: -1.5px; background: var(--fg); border-radius: 2px; z-index: 2; }
+.rv-skalatext { display: flex; justify-content: space-between; }
+.rv-metoder { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.rvm-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.rvm-namn { font-weight: 600; }
+.jamfor, .bokslut { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.jamfor th, .jamfor td, .bokslut th, .bokslut td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.jamfor th, .bokslut th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+.jamfor .r, .bokslut .r { text-align: right; }
+.jamfor tr.egen td { background: var(--surface-2); }
+.jamfor tr.median td { color: var(--muted); font-style: italic; }
+.an-kv dd { font-size: 13.5px; }
+@media (max-width: 480px) { .an-kv { grid-template-columns: 1fr; } }
+.utd-bars { display: flex; gap: 6px; align-items: flex-end; height: 96px; padding-top: 18px; overflow-x: auto; }
+.utd-bars .ub { flex: 1 0 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 10.5px; gap: 2px; }
+.utd-bars .ub i { display: block; width: 100%; max-width: 28px; height: var(--h); min-height: 2px; background: var(--buy); border-radius: 3px 3px 0 0; opacity: .8; }
+
 /* Toast */
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; z-index: 20; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
 </style>
@@ -1427,6 +1453,7 @@ function renderDetail() {
       '</dl>' +
     '</section>' +
     renderBedomning(s, b, ctx, checkRows) +
+    renderAnalyssida(s, b) +
     '<section class="card"><div class="card-head"><h2>Nyckeltal</h2><a class="hint" href="#regler">Ändra listan</a></div>' +
       '<table class="metrics"><tbody>' + metricRows + '</tbody></table>' +
       '<p class="hint">' + (s.symbol ? 'Fält märkta <span class="tag auto">auto</span> fylls i vid varje hämtning. Vill du använda ett eget värde: skriv in det och tryck på auto så låses fältet.' : 'Skriv in värdena från bolagets rapport eller din mäklare. Tomt fält betyder att regler på det nyckeltalet hoppas över.') + '</p>' +
@@ -1450,6 +1477,142 @@ function renderDetail() {
       '</tbody></table></div></section>' : '') +
     '<div class="danger-zone"><button class="btn danger" data-action="delete-stock">Ta bort aktien</button></div>' +
   '</div>';
+}
+
+/* ---------- "Är det ett bra köp?" – rimlig värdering, jämförbara bolag, analytiker, bokslut ---------- */
+// Enkel tvåstegs-DCF på fritt kassaflöde per aktie: g1 i fem år, därefter linjär avtrappning till evig tillväxt under fem år, sedan evig tillväxt.
+const DCF = { ar1: 5, ar2: 5, evig: 3 };
+function dcfVarde(fcf, g1, krav, evig) {
+  evig = evig == null ? DCF.evig : evig;
+  if (!(fcf > 0) || !(krav > evig)) return null;
+  let v = 0, c = fcf, g = g1;
+  for (let t = 1; t <= DCF.ar1 + DCF.ar2; t++) {
+    if (t > DCF.ar1) g = g1 + (evig - g1) * (t - DCF.ar1) / DCF.ar2;
+    c = c * (1 + g / 100);
+    v += c / Math.pow(1 + krav / 100, t);
+  }
+  const tv = c * (1 + evig / 100) / ((krav - evig) / 100);
+  return v + tv / Math.pow(1 + krav / 100, DCF.ar1 + DCF.ar2);
+}
+// Baklänges: vilken tillväxt g1 får dagens kurs att gå ihop vid avkastningskravet?
+function dcfKravdTillvaxt(fcf, kurs, krav) {
+  if (!(fcf > 0) || !(kurs > 0)) return null;
+  let lo = -30, hi = 80;
+  if (dcfVarde(fcf, hi, krav) < kurs) return hi + 1; // mer än 80 % – orimligt
+  if (dcfVarde(fcf, lo, krav) > kurs) return lo - 1;
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (dcfVarde(fcf, mid, krav) < kurs) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+function fmtBelopp(v, valuta) {
+  if (!isNum(v)) return '–';
+  const a = Math.abs(v);
+  const txt = a >= 1e9 ? fmt(v / 1e9, a >= 1e10 ? 0 : 1) + ' mdr' : a >= 1e6 ? fmt(v / 1e6, 0) + ' mn' : fmt(v, 0);
+  return txt + (valuta ? ' ' + valuta : '');
+}
+// Rimlig värdering för en aktie. Returnerar metoder (med värde i kursvalutan och förbehåll), antaganden och slutsats.
+function rimligVardering(s, b) {
+  const a = b.a; if (!a) return null;
+  const v = analysVarden(s, a), kurs = s.kurs > 0 ? s.kurs : a.kurs;
+  if (!(kurs > 0)) return null;
+  const opal = a.opalitlig && a.opalitlig.indexOf('vinst') >= 0;
+  const vpa = !opal && isNum(v.vpa) && v.vpa > 0 ? v.vpa : null;
+  const vpaF = isNum(v.vpa_forward) && v.vpa_forward > 0 ? v.vpa_forward : null;
+  const fcf = isNum(v.fcf_yield) ? kurs * v.fcf_yield / 100 : null;
+  // Tillväxtantagande: analytikernas prognos nästa år, annars historisk vinsttillväxt, annars omsättningstillväxt.
+  let g = null, gKalla = '';
+  if (isNum(v.prognos_vinst_nasta_ar)) { g = v.prognos_vinst_nasta_ar; gKalla = 'analytikernas vinstprognos nästa år'; }
+  else if (!opal && isNum(v.vpa_cagr3)) { g = v.vpa_cagr3; gKalla = 'vinsttillväxt per aktie senaste tre åren'; }
+  else if (isNum(v.oms_cagr3)) { g = v.oms_cagr3; gKalla = 'omsättningstillväxt senaste tre åren'; }
+  const gDcf = g == null ? 3 : Math.max(-10, Math.min(25, g)); // DCF: max 25 % i fem år
+  const metoder = [];
+  // Graham
+  if (!opal && isNum(v.graham) && v.graham > 0) metoder.push({ id: 'graham', namn: 'Graham-tal', varde: v.graham, vikt: g != null && g > 15 ? 0.5 : 1, text: '√(22,5 × VPA ' + fmt(vpa, 2) + ' × eget kapital/aktie). Försiktigt värde för mogna bolag; undervärderar tillväxtbolag.' });
+  // PEG-baserat rimligt P/E (Lynch: P/E ≈ tillväxt)
+  if (g != null && (vpa || vpaF)) {
+    const fairPe = Math.max(8, Math.min(35, g));
+    const bas = vpa || vpaF;
+    metoder.push({ id: 'peg', namn: 'PEG-baserat rimligt P/E', varde: fairPe * bas, vikt: 1, text: 'Rimligt P/E ' + fmt(fairPe, 0) + ' (= förväntad tillväxt ' + fmt(g, 0) + ' %, begränsat till 8–35) × ' + (vpa ? 'VPA ' + fmt(vpa, 2) : 'VPA framåt ' + fmt(vpaF, 2)) + '. Lynch.' });
+  }
+  // DCF 9–10 %
+  if (fcf != null && fcf > 0) {
+    const v10 = dcfVarde(fcf, gDcf, 10), v9 = dcfVarde(fcf, gDcf, 9);
+    metoder.push({ id: 'dcf', namn: 'Diskonterat kassaflöde (DCF)', varde: (v9 + v10) / 2, lag: v10, hog: v9, vikt: 2, text: 'Fritt kassaflöde ' + fmt(fcf, 2) + ' per aktie växer ' + fmt(gDcf, 0) + ' % per år i fem år' + (g != null && g > 25 ? ' (prognosen ' + fmt(g, 0) + ' % är nedtagen till 25 %)' : '') + ', trappas ned till ' + DCF.evig + ' % evig tillväxt, avkastningskrav 9–10 %.' });
+    const krav = dcfKravdTillvaxt(fcf, kurs, 9.5);
+    metoder.push({ id: 'baklanges', namn: 'Baklängesräkning', varde: null, kravdTillvaxt: krav, text: krav == null ? '' : krav > 80 ? 'Dagens kurs kräver mer än 80 % årlig tillväxt i fritt kassaflöde i fem år (vid 9,5 % avkastningskrav) – kursen bygger på något annat än dagens kassaflöde.' : krav < -30 ? 'Dagens kurs är motiverad även om kassaflödet krymper kraftigt.' : 'Dagens kurs kräver ' + fmt(krav, 0) + ' % årlig tillväxt i fritt kassaflöde de kommande fem åren (vid 9,5 % avkastningskrav)' + (g != null ? ' – prognosen säger ' + fmt(g, 0) + ' %.' : '.') });
+  } else if (fcf != null) metoder.push({ id: 'dcf', namn: 'Diskonterat kassaflöde (DCF)', varde: null, vikt: 0, text: 'Går inte att räkna: fritt kassaflöde är negativt.' });
+  // Analytikernas riktkurs
+  if (a.analytiker && isNum(a.analytiker.riktkurs) && a.analytiker.riktkurs > 0) metoder.push({ id: 'rikt', namn: 'Analytikernas riktkurs', varde: a.analytiker.riktkurs, lag: a.analytiker.riktkursLag, hog: a.analytiker.riktkursHog, vikt: 1, text: (a.analytiker.antal || '?') + ' analytiker, spann ' + fmt(a.analytiker.riktkursLag, 0) + '–' + fmt(a.analytiker.riktkursHog, 0) + '. Tenderar att följa kursen.' });
+  const med = metoder.filter(m => isNum(m.varde) && m.varde > 0 && m.vikt > 0);
+  let rimligt = null;
+  if (med.length) { const w = med.reduce((n, m) => n + m.vikt, 0); rimligt = Math.exp(med.reduce((n, m) => n + Math.log(m.varde) * m.vikt, 0) / w); } // viktat geometriskt snitt
+  const spridning = med.length >= 2 ? Math.max(...med.map(m => m.varde)) / Math.min(...med.map(m => m.varde)) : null;
+  return { metoder, rimligt, kopvard: rimligt != null ? rimligt * 0.8 : null, fullvarderad: rimligt != null ? rimligt * 1.2 : null, kurs, g, gKalla, gDcf, fcf, vpa, vpaF, spridning, antal: med.length, opal };
+}
+function renderAnalyssida(s, b) {
+  const a = b.a;
+  const cur = s.valuta && s.valuta !== 'SEK' ? s.valuta : 'kr';
+  if (!a) return '<section class="card analys-sida"><h2>Är det ett bra köp?</h2><p class="hint">' + (s.symbol ? 'Analysen hämtas vid nästa uppdatering.' : 'Koppla aktien till en Yahoo-symbol så kan appen räkna på värdering, jämförbara bolag och analytikernas bild.') + '</p></section>';
+  const rv = rimligVardering(s, b);
+  const v = analysVarden(s, a);
+  const kr = n => fmt(n, n != null && n < 10 ? 2 : n < 100 ? 1 : 0) + ' ' + cur;
+  // Värdering
+  let vard = '';
+  if (rv && rv.rimligt != null) {
+    const avvik = (rv.kurs / rv.rimligt - 1) * 100;
+    const lage = rv.kurs < rv.kopvard ? 'köpvärd' : rv.kurs > rv.fullvarderad ? 'fullvärderad' : 'rimligt värderad';
+    vard = '<div class="rv-sammanfattning ' + (lage === 'köpvärd' ? 'hi' : lage === 'fullvärderad' ? 'lo' : 'mid') + '">' +
+        '<div class="rv-slutsats"><b>Köpvärd under ' + kr(rv.kopvard) + ', fullvärderad över ' + kr(rv.fullvarderad) + '.</b> Kursen ' + kr(rv.kurs) + ' ligger ' + fmtPct(Math.abs(avvik), 0) + ' ' + (avvik < 0 ? 'under' : 'över') + ' det rimliga värdet ' + kr(rv.rimligt) + ' → <b>' + lage + '</b>.</div>' +
+        '<div class="rv-skala"><span class="rv-m" style="left:' + Math.max(2, Math.min(98, 50 + Math.max(-45, Math.min(45, avvik)))) + '%" title="kursen"></span><i class="rv-zon kop" style="left:0;width:40%"></i><i class="rv-zon neutral" style="left:40%;width:20%"></i><i class="rv-zon salj" style="left:60%;width:40%"></i></div>' +
+        '<div class="rv-skalatext small muted"><span>köpvärd</span><span>rimligt ' + kr(rv.rimligt) + '</span><span>fullvärderad</span></div>' +
+      '</div>' +
+      '<ul class="rv-metoder">' + rv.metoder.map(m => '<li><div class="rvm-head"><span class="rvm-namn">' + esc(m.namn) + '</span><span class="num rvm-varde">' + (isNum(m.varde) ? kr(m.varde) + (isNum(m.lag) && isNum(m.hog) ? ' <span class="muted small">(' + fmt(m.lag, 0) + '–' + fmt(m.hog, 0) + ')</span>' : '') : (m.id === 'baklanges' ? '' : '–')) + '</span></div><div class="hint">' + esc(m.text) + '</div></li>').join('') + '</ul>' +
+      '<p class="hint">Rimligt värde = viktat snitt av metoderna (DCF väger dubbelt' + (rv.g != null && rv.g > 15 ? ', Graham-talet halvt för tillväxtbolag' : '') + '); köpvärd = 20 % säkerhetsmarginal under, fullvärderad = 20 % över. ' + (rv.spridning != null && rv.spridning > 2.5 ? '<b>Metoderna spretar kraftigt (' + fmt(rv.spridning, 1) + ' gånger mellan lägsta och högsta) – ta intervallet med en nypa salt.</b> ' : '') +
+        'Antaganden: tillväxt ' + (rv.g != null ? fmt(rv.g, 0) + ' % (' + esc(rv.gKalla) + ')' : 'saknas – 3 % används') + ', avkastningskrav 9–10 %, evig tillväxt 3 %' + (rv.fcf != null ? ', fritt kassaflöde ' + fmt(rv.fcf, 2) + ' ' + cur + '/aktie' : '') + '. Förenklade modeller på Yahoo-data – ett intervall att resonera kring, inte ett facit.</p>';
+  } else {
+    vard = '<p class="hint">Ingen värderingsmetod går att räkna' + (rv && rv.opal ? ' – vinsten i källan är orimlig' : '') + (rv && rv.metoder.length ? ': ' + esc(rv.metoder.map(m => m.namn + (m.text ? ' (' + m.text + ')' : '')).join('; ')) : '') + '.</p>';
+  }
+  // Styrkor och svagheter
+  const li = (z, klass) => '<li class="' + klass + '"><span class="mark">' + (klass === 'for' ? '+' : '−') + '</span><span class="rc-text">' + esc(z.text) + (z.sub ? '<span class="sub">' + esc(z.sub) + '</span>' : '') + '</span></li>';
+  const styrkor = '<div class="skal"><div><h3>Styrkor</h3>' + (b.skalFor.length ? '<ul class="skal-list">' + b.skalFor.slice(0, 5).map(z => li(z, 'for')).join('') + '</ul>' : '<p class="hint">Inget som sticker ut.</p>') + '</div>' +
+    '<div><h3>Svagheter</h3>' + (b.skalEmot.length ? '<ul class="skal-list">' + b.skalEmot.slice(0, 5).map(z => li(z, 'emot')).join('') + '</ul>' : '<p class="hint">Inget som sticker ut.</p>') + '</div></div>';
+  // Jämförbara bolag
+  let jamfor = '';
+  if (a.jamfor && a.jamfor.bolag && a.jamfor.bolag.length) {
+    const rad = (sym, namn, pe, fpe, pb, avk, rek, egen) => '<tr' + (egen ? ' class="egen"' : '') + '><td><b>' + esc(sym) + '</b><div class="small muted">' + esc(namn) + '</div></td><td class="num r">' + (isNum(pe) ? fmt(pe, 1) : '–') + '</td><td class="num r">' + (isNum(fpe) ? fmt(fpe, 1) : '–') + '</td><td class="num r">' + (isNum(pb) ? fmt(pb, 1) : '–') + '</td><td class="num r ' + cls(avk) + '">' + (isNum(avk) ? fmtSigned(avk, 0) + ' %' : '–') + '</td><td class="small">' + esc(rek || '–') + '</td></tr>';
+    jamfor = '<h3>Jämförbara bolag</h3><div class="table-scroll"><table class="jamfor"><thead><tr><th>Bolag</th><th class="r">P/E</th><th class="r">P/E fram.</th><th class="r">P/B</th><th class="r">52 v</th><th>Rek.</th></tr></thead><tbody>' +
+      rad(s.ticker, a.namn, v.pe, v.pe_forward, v.pb, v.avk12m, a.analytiker && a.analytiker.rek ? { strong_buy: 'Stark köp', buy: 'Köp', hold: 'Behåll', underperform: 'Sälj', sell: 'Sälj' }[a.analytiker.rek] || a.analytiker.rek : null, true) +
+      a.jamfor.bolag.map(x => rad(x.symbol, x.namn, x.pe, x.fpe, x.pb, x.avk52v, x.rek ? String(x.rek).replace(/^\d+(\.\d+)? - /, '') : null, false)).join('') +
+      '<tr class="median"><td>Median liknande</td><td class="num r">' + (isNum(a.jamfor.peMedian) ? fmt(a.jamfor.peMedian, 1) : '–') + '</td><td class="num r">' + (isNum(a.jamfor.fpeMedian) ? fmt(a.jamfor.fpeMedian, 1) : '–') + '</td><td class="num r">' + (isNum(a.jamfor.pbMedian) ? fmt(a.jamfor.pbMedian, 1) : '–') + '</td><td class="num r">' + (isNum(a.jamfor.avk52vMedian) ? fmtSigned(a.jamfor.avk52vMedian, 0) + ' %' : '–') + '</td><td></td></tr>' +
+      '</tbody></table></div><p class="hint">"Liknande bolag" enligt Yahoo – listan bygger delvis på vad andra tittar på, inte strikt bransch. Bedöm själv om jämförelsen är rättvis.</p>';
+  }
+  // Analytikernas bild
+  const an = a.analytiker || {};
+  const rekText = isNum(an.snitt) ? (an.snitt <= 1.5 ? 'Stark köp' : an.snitt <= 2.5 ? 'Köp' : an.snitt <= 3.5 ? 'Behåll' : an.snitt <= 4.5 ? 'Sälj' : 'Stark sälj') + ' (' + fmt(an.snitt, 1) + ' av 5)' : '–';
+  const analytiker = an.antal || isNum(an.riktkurs)
+    ? '<h3>Analytikernas bild</h3><dl class="facts an-kv">' +
+      '<div><dt>Antal</dt><dd class="num">' + (an.antal || '–') + '</dd></div><div><dt>Snittrekommendation</dt><dd>' + esc(rekText) + '</dd></div>' +
+      '<div><dt>Andel köp</dt><dd class="num">' + (isNum(an.andelKop) ? fmt(an.andelKop, 0) + ' %' : '–') + (isNum(an.andelKop3mSedan) ? ' <span class="muted small">(' + fmt(an.andelKop3mSedan, 0) + ' % för 3 mån sedan)</span>' : '') + '</dd></div>' +
+      '<div><dt>Riktkurs</dt><dd class="num">' + (isNum(an.riktkurs) ? kr(an.riktkurs) + ' <span class="muted small">(' + fmt(an.riktkursLag, 0) + '–' + fmt(an.riktkursHog, 0) + ')</span>' : '–') + '</dd></div>' +
+      '<div><dt>Vinstprognos i år / nästa år</dt><dd class="num">' + fmtPct(an.prognos && an.prognos.vinstIAr, 0, true) + ' / ' + fmtPct(an.prognos && an.prognos.vinstNastaAr, 0, true) + '</dd></div>' +
+      '<div><dt>Omsättning nästa år</dt><dd class="num">' + fmtPct(an.prognos && an.prognos.omsattningNastaAr, 0, true) + '</dd></div>' +
+      '<div><dt>Revideringar 30 d / estimat 90 d</dt><dd class="num">' + (an.revideringar ? (an.revideringar.upp30 + ' upp, ' + an.revideringar.ner30 + ' ned / ' + fmtPct(an.revideringar.estimat90d, 1, true)) : '–') + '</dd></div>' +
+      '<div><dt>Överraskningar</dt><dd class="num">' + (an.overraskning && an.overraskning.av ? an.overraskning.slagna + ' av ' + an.overraskning.av + ' slog estimaten, snitt ' + fmtPct(an.overraskning.snitt, 1, true) : '–') + '</dd></div>' +
+      '<div><dt>' + (an.nastaRapport ? 'Nästa rapport' : 'Senaste rapport') + '</dt><dd>' + esc(fmtDate(an.nastaRapport || an.senasteRapport)) + '</dd></div>' +
+    '</dl>' : '<h3>Analytikernas bild</h3><p class="hint">Inga analytikerdata hos Yahoo för den här aktien.</p>';
+  // Bokslut
+  const fc = a.redovisningsvaluta || '';
+  const bok = a.bokslut && a.bokslut.length ? '<h3>Bokslut (' + esc(fc) + ')</h3><div class="table-scroll"><table class="bokslut"><thead><tr><th>År</th><th class="r">Omsättning</th><th class="r">Vinst</th><th class="r">Fritt kassaflöde</th><th class="r">Marginal</th><th class="r">VPA</th><th class="r">Aktier</th></tr></thead><tbody>' +
+    a.bokslut.map(r => '<tr><td>' + esc(r.ar) + '</td><td class="num r">' + fmtBelopp(r.omsattning) + '</td><td class="num r ' + cls(r.vinst) + '">' + fmtBelopp(r.vinst) + '</td><td class="num r ' + cls(r.frittKassaflode) + '">' + fmtBelopp(r.frittKassaflode) + '</td><td class="num r">' + (isNum(r.vinst) && r.omsattning > 0 ? fmt(r.vinst / r.omsattning * 100, 1) + ' %' : '–') + '</td><td class="num r">' + (isNum(r.vpa) ? fmt(r.vpa, 2) : '–') + '</td><td class="num r">' + fmtBelopp(r.aktier) + '</td></tr>').join('') +
+    '</tbody></table></div>' + (a.kvartal && a.kvartal.length ? '<p class="hint">Senaste kvartalsvinster: ' + a.kvartal.map(q => esc(q.datum.slice(0, 7)) + ' ' + fmtBelopp(q.vinst)).join(' · ') + (isNum(v.vinst_kvartal_yoy) ? ' · senaste kvartalet ' + fmtPct(v.vinst_kvartal_yoy, 0, true) + ' mot samma kvartal i fjol' : '') + '</p>' : '') : '';
+  // Utdelningshistorik
+  const uh = a.utdelning && a.utdelning.historik && a.utdelning.historik.length ? a.utdelning.historik : [];
+  const utd = uh.length ? '<h3>Utdelning per år (' + esc(cur) + ')</h3><div class="utd-bars">' + (() => { const mx = Math.max(...uh.map(x => x[1])) || 1; return uh.map(x => '<div class="ub"><i style="--h:' + (x[1] / mx * 100) + '%"></i><span class="num">' + fmt(x[1], x[1] < 1 ? 2 : 1) + '</span><span class="muted">' + esc(x[0]) + '</span></div>').join(''); })() + '</div>' +
+    '<p class="hint">' + (isNum(a.utdelning.direktavkastning) ? 'Direktavkastning ' + fmt(a.utdelning.direktavkastning, 2) + ' %' + (isNum(a.utdelning.direktavkastning5ar) ? ' (5-årssnitt ' + fmt(a.utdelning.direktavkastning5ar, 2) + ' %)' : '') + ' · ' : '') + (isNum(a.utdelning.andelAvVinst) ? 'utdelningsandel ' + fmt(a.utdelning.andelAvVinst, 0) + ' % · ' : '') + (isNum(a.utdelning.arUtanSankning) ? a.utdelning.arUtanSankning + ' år utan sänkning · ' : '') + (a.utdelning.xdag ? 'X-dag ' + esc(fmtDate(a.utdelning.xdag)) : '') + '</p>' : '';
+  return '<section class="card analys-sida"><div class="card-head"><h2>Är det ett bra köp?</h2><span class="hint">' + (b.score != null ? esc(verdictLabel(b.verdict, s.antal > 0)) + ' · ' + b.score + ' p' : '') + '</span></div>' +
+    '<h3>Rimlig värdering</h3>' + vard +
+    styrkor + jamfor + analytiker + bok + utd +
+    '<p class="hint">Underlag: Yahoo Finance, analys hämtad ' + esc(fmtTime(b.hamtad)) + '. Beslutsstöd, inte finansiell rådgivning – siffror från källan kan vara fel eller gamla, kontrollera mot bolagets rapporter innan du handlar.</p>' +
+  '</section>';
 }
 
 // Påminnelse på portföljsidan: ägda aktier vars beslut ändrats de senaste 7 dagarna – läs tesen och säljplanen.
