@@ -295,15 +295,15 @@ export async function analys(f: FetchFn, symbol: string) {
     const roa0 = div(ni0, ta0), roa1 = div(ni1, ta1);
     const test = (ok: boolean | null, namn: string, varde: string) => ({ namn, ok, varde });
     const delar = [
-      test(roa0 == null ? null : roa0 > 0, "Positiv avkastning på tillgångar", roa0 == null ? "–" : (roa0 * 100).toFixed(1) + " %"),
+      test(roa0 == null ? null : roa0 > 0, "Positiv avkastning på tillgångar", roa0 == null ? "–" : (roa0 * 100).toFixed(1).replace(".", ",") + " %"),
       test(cfo0 == null ? null : cfo0 > 0, "Positivt kassaflöde från rörelsen", cfo0 == null ? "–" : (cfo0 > 0 ? "ja" : "nej")),
-      test(roa0 == null || roa1 == null ? null : roa0 > roa1, "Stigande avkastning på tillgångar", roa0 == null || roa1 == null ? "–" : (roa1 * 100).toFixed(1) + " → " + (roa0 * 100).toFixed(1) + " %"),
+      test(roa0 == null || roa1 == null ? null : roa0 > roa1, "Stigande avkastning på tillgångar", roa0 == null || roa1 == null ? "–" : (roa1 * 100).toFixed(1).replace(".", ",") + " → " + (roa0 * 100).toFixed(1).replace(".", ",") + " %"),
       test(cfo0 == null || ni0 == null ? null : cfo0 > ni0, "Kassaflöde större än vinst", cfo0 == null || ni0 == null ? "–" : (cfo0 > ni0 ? "ja" : "nej")),
-      test(ltd0 == null || ltd1 == null || !ta0 || !ta1 ? null : ltd0 / ta0 <= ltd1 / ta1, "Minskande långfristig skuld", ltd0 == null || ltd1 == null || !ta0 || !ta1 ? "–" : (ltd1 / ta1 * 100).toFixed(0) + " → " + (ltd0 / ta0 * 100).toFixed(0) + " % av tillgångarna"),
-      test(ca0 == null || ca1 == null || !cl0 || !cl1 ? null : ca0 / cl0 > ca1 / cl1, "Stigande balanslikviditet", ca0 == null || ca1 == null || !cl0 || !cl1 ? "–" : (ca1 / cl1).toFixed(2) + " → " + (ca0 / cl0).toFixed(2)),
-      test(sh0 == null || sh1 == null ? null : sh0 <= sh1 * 1.01, "Ingen utspädning", sh0 == null || sh1 == null ? "–" : ((sh0 / sh1 - 1) * 100).toFixed(1) + " % fler aktier"),
-      test(gp0 == null || gp1 == null || !rev0 || !rev1 ? null : gp0 / rev0 > gp1 / rev1, "Stigande bruttomarginal", gp0 == null || gp1 == null || !rev0 || !rev1 ? "–" : (gp1 / rev1 * 100).toFixed(1) + " → " + (gp0 / rev0 * 100).toFixed(1) + " %"),
-      test(rev0 == null || rev1 == null || !ta0 || !ta1 ? null : rev0 / ta0 > rev1 / ta1, "Stigande kapitalomsättning", rev0 == null || rev1 == null || !ta0 || !ta1 ? "–" : (rev1 / ta1).toFixed(2) + " → " + (rev0 / ta0).toFixed(2)),
+      test(ltd0 == null || ltd1 == null || !ta0 || !ta1 ? null : ltd0 / ta0 <= ltd1 / ta1, "Minskande långfristig skuld", ltd0 == null || ltd1 == null || !ta0 || !ta1 ? "–" : (ltd1 / ta1 * 100).toFixed(0).replace(".", ",") + " → " + (ltd0 / ta0 * 100).toFixed(0).replace(".", ",") + " % av tillgångarna"),
+      test(ca0 == null || ca1 == null || !cl0 || !cl1 ? null : ca0 / cl0 > ca1 / cl1, "Stigande balanslikviditet", ca0 == null || ca1 == null || !cl0 || !cl1 ? "–" : (ca1 / cl1).toFixed(2).replace(".", ",") + " → " + (ca0 / cl0).toFixed(2).replace(".", ",")),
+      test(sh0 == null || sh1 == null ? null : sh0 <= sh1 * 1.01, "Ingen utspädning", sh0 == null || sh1 == null ? "–" : ((sh0 / sh1 - 1) * 100).toFixed(1).replace(".", ",") + " % fler aktier"),
+      test(gp0 == null || gp1 == null || !rev0 || !rev1 ? null : gp0 / rev0 > gp1 / rev1, "Stigande bruttomarginal", gp0 == null || gp1 == null || !rev0 || !rev1 ? "–" : (gp1 / rev1 * 100).toFixed(1).replace(".", ",") + " → " + (gp0 / rev0 * 100).toFixed(1).replace(".", ",") + " %"),
+      test(rev0 == null || rev1 == null || !ta0 || !ta1 ? null : rev0 / ta0 > rev1 / ta1, "Stigande kapitalomsättning", rev0 == null || rev1 == null || !ta0 || !ta1 ? "–" : (rev1 / ta1).toFixed(2).replace(".", ",") + " → " + (rev0 / ta0).toFixed(2).replace(".", ",")),
     ];
     const bedomda = delar.filter((d) => d.ok != null).length;
     fscore = { poang: delar.filter((d) => d.ok).length, av: bedomda, delar, ar: last(S.annualNetIncome) ? S.annualNetIncome[S.annualNetIncome.length - 1].d : null };
@@ -531,17 +531,17 @@ export async function analys(f: FetchFn, symbol: string) {
   if (kursAlder != null && kursAlder > 7) flaggor.push("Kursen från källan är gammal (" + kursTid + ") – nyckeltal mot kursen kan vara inaktuella");
   if (fcf != null && fcf < 0) flaggor.push("Negativt fritt kassaflöde senaste 12 månaderna");
   if (netIncome != null && netIncome < 0) flaggor.push("Förlust senaste 12 månaderna");
-  if (utspadning1ar != null && utspadning1ar > 3) flaggor.push("Utspädning: " + utspadning1ar.toFixed(1) + " % fler aktier på ett år");
-  if (zscore != null && zscore < 1.81) flaggor.push("Altman Z-score " + zscore.toFixed(2) + " – riskzon för finansiell stress");
-  if (nettoskuldEbitda != null && nettoskuldEbitda > 4) flaggor.push("Nettoskuld " + nettoskuldEbitda.toFixed(1) + " gånger EBITDA");
+  if (utspadning1ar != null && utspadning1ar > 3) flaggor.push("Utspädning: " + utspadning1ar.toFixed(1).replace(".", ",") + " % fler aktier på ett år");
+  if (zscore != null && zscore < 1.81) flaggor.push("Altman Z-score " + zscore.toFixed(2).replace(".", ",") + " – riskzon för finansiell stress");
+  if (nettoskuldEbitda != null && nettoskuldEbitda > 4) flaggor.push("Nettoskuld " + nettoskuldEbitda.toFixed(1).replace(".", ",") + " gånger EBITDA");
   if (rantetackning != null && rantetackning < 1) flaggor.push("Rörelseresultatet täcker inte räntekostnaderna");
-  else if (rantetackning != null && rantetackning < 2) flaggor.push("Räntetäckning bara " + rantetackning.toFixed(1) + " gånger");
+  else if (rantetackning != null && rantetackning < 2) flaggor.push("Räntetäckning bara " + rantetackning.toFixed(1).replace(".", ",") + " gånger");
   if (evFc != null && evFc <= 0) flaggor.push("Nettokassan är större än börsvärdet – EV-baserade mått går inte att räkna");
   if (utdelning.andelAvVinst != null && utdelning.andelAvVinst > 100) flaggor.push("Utdelningen är större än vinsten");
-  if (bruttomarginalNu != null && bruttomarginalFg != null && bruttomarginalNu < bruttomarginalFg - 3) flaggor.push("Bruttomarginalen föll " + (bruttomarginalFg - bruttomarginalNu).toFixed(1) + " procentenheter senaste bokslutet");
+  if (bruttomarginalNu != null && bruttomarginalFg != null && bruttomarginalNu < bruttomarginalFg - 3) flaggor.push("Bruttomarginalen föll " + (bruttomarginalFg - bruttomarginalNu).toFixed(1).replace(".", ",") + " procentenheter senaste bokslutet");
   if (insyn.salj6m >= 3 && insyn.kop6m === 0) flaggor.push("Bara insynsförsäljningar senaste halvåret (" + insyn.salj6m + " st)");
   if (fallande != null && fallande >= 2) flaggor.push("Vinsten har fallit " + fallande + " kvartal i rad (mot samma kvartal året före)");
-  else if (fallande != null && fallande >= 1 && vinstTtmFallande) flaggor.push("Fallande vinst: senaste kvartalet under samma kvartal i fjol" + (kvYoy != null ? " (" + kvYoy.toFixed(0) + " %)" : "") + " och senaste tolv månaderna under senaste bokslutsåret" + (vinstTtmFy != null ? " (" + vinstTtmFy.toFixed(0) + " %)" : ""));
+  else if (fallande != null && fallande >= 1 && vinstTtmFallande) flaggor.push("Fallande vinst: senaste kvartalet under samma kvartal i fjol" + (kvYoy != null ? " (" + kvYoy.toFixed(0).replace(".", ",") + " %)" : "") + " och senaste tolv månaderna under senaste bokslutsåret" + (vinstTtmFy != null ? " (" + vinstTtmFy.toFixed(0).replace(".", ",") + " %)" : ""));
   if (utdHist && utdHist.sankt) flaggor.push("Utdelningen sänktes senaste året");
   // Rimlighetskontroll av källdata: vinst per aktie i senaste bokslutet som inte går ihop med kursen tyder på engångspost eller datafel.
   const opalitlig: string[] = []; // delar av underlaget som appen inte ska lita på
@@ -549,7 +549,7 @@ export async function analys(f: FetchFn, symbol: string) {
   if (vpaBokslut != null && vpaBokslut > 0 && kurs) {
     const kEps = pence ? 100 : (fc && valuta && fc !== valuta ? k : 1);
     const peBokslut = kurs / (vpaBokslut * kEps);
-    if (peBokslut < 2) { flaggor.push("Vinsten per aktie i senaste bokslutet (" + vpaBokslut + " " + (fc || "") + ") går inte ihop med kursen – troligen engångspost eller fel i källan; vinstbaserade mått hoppas över"); opalitlig.push("vinst"); }
+    if (peBokslut < 2) { flaggor.push("Vinsten per aktie i senaste bokslutet (" + String(vpaBokslut).replace(".", ",") + " " + (fc || "") + ") går inte ihop med kursen – troligen engångspost eller fel i källan; vinstbaserade mått hoppas över"); opalitlig.push("vinst"); }
   }
   if (kursAlder != null && kursAlder > 7) opalitlig.push("kurs");
   if (vinstkvalitet != null && netIncome != null && netIncome > 0 && vinstkvalitet < 0.5) flaggor.push("Kassaflödet från rörelsen är bara " + Math.round(vinstkvalitet * 100) + " % av vinsten");
