@@ -957,7 +957,9 @@ function maybeAutoRefresh() {
   const list = state.stocks.filter(s => s.symbol);
   if (!list.length || refreshing) return;
   const oldest = Math.min.apply(null, list.map(s => s.hamtad ? Date.parse(s.hamtad) || 0 : 0));
-  if (Date.now() - oldest > REFRESH_MS) refreshAll({ silent: true });
+  // Hämta också när dagens analys saknas för någon aktie (t.ex. efter att analyscachen rensats) – men inte om den nyss misslyckades.
+  const saknarAnalys = list.some(s => !analysFarsk(analysFor(s)) && !s.analysFel);
+  if (Date.now() - oldest > REFRESH_MS || saknarAnalys) refreshAll({ silent: true });
 }
 
 /* ---------- Beräkningar ---------- */
@@ -1247,6 +1249,7 @@ function loggaBeslut() {
   state.stocks.forEach(s => {
     if (!(s.kurs > 0)) return;
     const b = bedom(s, ctx);
+    if (b.verdict === 'saknas') return; // inget beslut utan analysunderlag – skriv inte över dagens rad med "saknas"
     const e = { d, id: s.id, sym: s.symbol || '', t: s.ticker, k: s.kurs, fx: s.fxSek || 1, v: b.verdict, p: b.score };
     // Etapp 5: dimensionspoäng, uppfyllda egna regler och riskregler som sänkte beslutet – för träffsäkerhet per dimension och regel.
     if (b.score != null) { e.dm = b.dims.map(x => x.poang == null ? null : Math.round(x.poang * 10) / 10); }
