@@ -400,7 +400,10 @@ export async function analys(f: FetchFn, symbol: string) {
       for (let i = kompletta.length - 1; i > 0; i--) { const nu = perAr[kompletta[i]], fg = perAr[kompletta[i - 1]]; if (nu > 0 && nu >= fg * 0.999) utanSankning++; else break; }
       const n5 = kompletta.length >= 6 ? 5 : kompletta.length - 1;
       const tillv5 = n5 > 0 && perAr[kompletta[kompletta.length - 1 - n5]] > 0 && perAr[kompletta[kompletta.length - 1]] > 0 ? (Math.pow(perAr[kompletta[kompletta.length - 1]] / perAr[kompletta[kompletta.length - 1 - n5]], 1 / n5) - 1) * 100 : null;
-      utdHist = { perAr: kompletta.slice(-10).map((y) => [y, r2(perAr[y], 4)]), arUtanSankning: utanSankning, tillvaxt5ar: r2(tillv5, 1), senast: ch.utd[ch.utd.length - 1][0] };
+      // Sänkt (eller indragen) utdelning: senaste hela kalenderåret lägre än året före.
+      const sistaAr = kompletta[kompletta.length - 1], naraAr = kompletta[kompletta.length - 2];
+      const sankt = naraAr != null && perAr[naraAr] > 0 && perAr[sistaAr] < perAr[naraAr] * 0.999;
+      utdHist = { perAr: kompletta.slice(-10).map((y) => [y, r2(perAr[y], 4)]), arUtanSankning: utanSankning, tillvaxt5ar: r2(tillv5, 1), senast: ch.utd[ch.utd.length - 1][0], sankt };
     }
   } catch { saknas.push("kurshistorik"); }
 
@@ -492,6 +495,22 @@ export async function analys(f: FetchFn, symbol: string) {
   } catch { saknas.push("jamforbara"); }
 
   // Årsserier för appen (senaste 5 boksluten), i redovisningsvalutan
+  // Kvartalsvinster: antal kvartal i rad (senaste först) där vinsten är lägre än samma kvartal året före.
+  // Yahoo ger bara de fem senaste kvartalen och ibland med luckor, så jämförelsen görs bara när motsvarande kvartal finns (±45 dagar);
+  // saknas jämförbart kvartal blir värdet null och regeln slår inte.
+  const kv = (S.quarterlyNetIncome || []).slice(-5);
+  const dagar = (a: string, b: string) => Math.abs((new Date(a).getTime() - new Date(b).getTime()) / 86400000);
+  const arFore = (i: number) => kv.find((q) => Math.abs(dagar(q.d, kv[i].d) - 365) <= 45);
+  let fallande: number | null = null;
+  for (let i = kv.length - 1; i >= 0; i--) {
+    const q = arFore(i);
+    if (!q) break;
+    if (fallande == null) fallande = 0;
+    if (kv[i].v < q.v) fallande++; else break;
+  }
+  const sista = kv.length ? arFore(kv.length - 1) : undefined;
+  const kvYoy = sista && sista.v > 0 ? (kv[kv.length - 1].v / sista.v - 1) * 100 : null;
+  const kvartal = kv.map((p) => { const oms = (S.quarterlyTotalRevenue || []).find((x) => x.d === p.d); return { datum: p.d, vinst: p.v, omsattning: oms ? oms.v : null }; });
   const arSerie = (S.annualTotalRevenue || []).slice(-5).map((p) => {
     const at = (s: Serie | undefined) => { const hit = s && s.find((x) => x.d === p.d); return hit ? hit.v : null; };
     return { ar: p.d.slice(0, 4), datum: p.d, omsattning: p.v, vinst: at(S.annualNetIncome), kassaflode: at(S.annualOperatingCashFlow), frittKassaflode: at(S.annualFreeCashFlow), vpa: at(S.annualDilutedEPS), egetKapital: at(S.annualStockholdersEquity), utdelningar: at(S.annualCashDividendsPaid), aktier: at(S.annualOrdinarySharesNumber) };
@@ -512,6 +531,8 @@ export async function analys(f: FetchFn, symbol: string) {
   if (utdelning.andelAvVinst != null && utdelning.andelAvVinst > 100) flaggor.push("Utdelningen är större än vinsten");
   if (bruttomarginalNu != null && bruttomarginalFg != null && bruttomarginalNu < bruttomarginalFg - 3) flaggor.push("Bruttomarginalen föll " + (bruttomarginalFg - bruttomarginalNu).toFixed(1) + " procentenheter senaste bokslutet");
   if (insyn.salj6m >= 3 && insyn.kop6m === 0) flaggor.push("Bara insynsförsäljningar senaste halvåret (" + insyn.salj6m + " st)");
+  if (fallande != null && fallande >= 2) flaggor.push("Vinsten har fallit " + fallande + " kvartal i rad (mot samma kvartal året före)");
+  if (utdHist && utdHist.sankt) flaggor.push("Utdelningen sänktes senaste året");
   // Rimlighetskontroll av källdata: vinst per aktie i senaste bokslutet som inte går ihop med kursen tyder på engångspost eller datafel.
   const opalitlig: string[] = []; // delar av underlaget som appen inte ska lita på
   const vpaBokslut = last(S.annualDilutedEPS);
@@ -555,10 +576,41 @@ export async function analys(f: FetchFn, symbol: string) {
       blankning: r2(pct(raw(ks.shortPercentOfFloat)), 1), insyn_kop6m: insyn.kop6m, insyn_salj6m: insyn.salj6m, insyn_andel: insyn.andelInsiders,
       analytiker_antal: analytiker.antal, analytiker_snitt: analytiker.snitt, analytiker_andel_kop: analytiker.andelKop, analytiker_andel_kop_3m: analytiker.andelKop3mSedan,
       riktkurs: analytiker.riktkurs, borsvarde: marketCap != null ? r2(marketCap, 0) : null, vpa: r2(vpa, 2),
+      // Riskregler och värdering
+      vpa_forward: r2(forwardPE != null && forwardPE > 0 && kurs ? kurs / forwardPE : null, 2),
+      vinst_kvartal_fallande: fallande, vinst_kvartal_yoy: r2(kvYoy, 1), utd_sankt: utdHist ? utdHist.sankt : null,
     },
+    kvartal,
     fscore, zscore: r2(zscore, 2), peHistorik: peHist, utdelning, trend, analytiker, insyn, jamfor, bokslut: arSerie, flaggor, saknas, opalitlig,
     hamtad: new Date().toISOString(),
   };
+  remember(key, out);
+  return out;
+}
+
+// Underlag för backtest (etapp 5): fem års dagliga stängningskurser, utdelningar och årlig vinst per aktie (i kursvalutan).
+// Index (^OMXSPI, ^GSPC …) får bara kurser. Lätt anrop utan crumb: chart + fundamentals-timeseries.
+export async function backtestData(f: FetchFn, symbol: string) {
+  const key = "bt:" + symbol;
+  const c = cached<any>(key, 24 * 60 * 60 * 1000);
+  if (c) return c;
+  const ch = await chart(f, symbol, "5y", "1d", !symbol.startsWith("^"));
+  const priser = ch.priser.map(([d, v]) => [d, Math.round(v * 10000) / 10000] as [string, number]);
+  let vpa: Array<{ d: string; v: number }> = [];
+  let vpaValuta: string | null = null;
+  if (!symbol.startsWith("^")) {
+    try {
+      const ts = await timeseries(f, symbol, ["annualDilutedEPS"], 7);
+      vpaValuta = ts.valuta;
+      const serie = ts.series.annualDilutedEPS || [];
+      const valuta = ch.valuta;
+      const pence = valuta === "GBp";
+      let k = 1;
+      if (vpaValuta && valuta && vpaValuta !== valuta) { const r = await fxRate(f, vpaValuta, pence ? "GBP" : valuta); if (r) k = r * (pence ? 100 : 1); }
+      vpa = serie.map((p) => ({ d: p.d, v: Math.round(p.v * k * 10000) / 10000 }));
+    } catch { /* ingen vinsthistorik – backtestet hoppar över värderingsdelen */ }
+  }
+  const out = { symbol, valuta: ch.valuta, index: symbol.startsWith("^") ? null : indexFor(symbol), priser, utd: ch.utd, vpa, vpaValuta, hamtad: new Date().toISOString() };
   remember(key, out);
   return out;
 }

@@ -4,7 +4,7 @@
 // Ingen portföljdata passerar eller sparas här – allt ligger i mobilens lagring.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { search, quote, history } from "./lib.ts";
-import { analys, rawSummary, rawTimeseries, peers, rawQuotes, rawChart } from "./analys.ts";
+import { analys, backtestData, rawSummary, rawTimeseries, peers, rawQuotes, rawChart } from "./analys.ts";
 
 const NAME = "/aktiekompassen";
 const APP_URL = "https://upperia.github.io/policy/aktiekompassen/";
@@ -49,6 +49,12 @@ Deno.serve(async (req: Request) => {
       const symbol = (url.searchParams.get("symbol") || "").trim();
       if (!symbol) return json({ error: "symbol saknas" }, 400);
       return json(await analys(fetch, symbol), 200, 3600);
+    }
+    // Backtest-underlag: fem års kurser, utdelningar och årlig vinst per aktie (eller bara kurser för ett index).
+    if (path === "/api/bt") {
+      const symbol = (url.searchParams.get("symbol") || "").trim();
+      if (!symbol) return json({ error: "symbol saknas" }, 400);
+      return json(await backtestData(fetch, symbol), 200, 3600);
     }
     // Råa Yahoo-svar – för att verifiera fält innan appen litar på dem.
     if (path === "/api/raw/summary") return json(await rawSummary(fetch, url.searchParams.get("symbol") || "", url.searchParams.get("modules") || "price"));

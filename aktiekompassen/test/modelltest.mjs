@@ -63,9 +63,9 @@ console.log(JSON.stringify(cards, null, 0));
 T(cards.length === 10 && cards.every(c => c.bars === 6), 'tio kort med sex staplar');
 T(cards.every(c => /^\d+$/.test(c.score)), 'alla kort har en poäng');
 T(cards.every(c => /Köp mer|Behåll|Minska|Sälj/.test(c.chip)), 'alla ägda har ett av de fyra besluten');
-const st1 = await page.evaluate(() => { const d = JSON.parse(localStorage.getItem('aktiekompassen-v2')); return { rules: d.settings.rules.map(r => r.id), modell: d.settings.modell && d.settings.modell.stil, logg: d.logg.filter(e => e.d === (d0 => d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0'))(new Date())).map(e => e.t + ':' + e.v + ':' + e.p), version: d.version }; });
+const st1 = await page.evaluate(() => { const d = JSON.parse(localStorage.getItem('aktiekompassen-v2')); return { rules: d.settings.rules.map(r => r.id), modell: d.settings.modell && d.settings.modell.stil, logg: d.logg.filter(e => e.d === new Date().toISOString().slice(0, 10)).map(e => e.t + ':' + e.v + ':' + e.p), version: d.version }; });
 console.log('STATE', JSON.stringify(st1));
-T(st1.rules.join(',') === 'r4,r5,r6,r10', 'gamla regler som modellen täcker togs bort (' + st1.rules.join(',') + ')');
+T(st1.rules.join(',') === 'r4,r5,r10', 'gamla regler som modellen täcker togs bort (' + st1.rules.join(',') + ')');
 T(st1.modell === 'balanserad' && st1.version === 3, 'modellinställningar sparade');
 T(st1.logg.length === 10 && st1.logg.every(x => /:(kop_mer|behall|minska|salj):\d+$/.test(x)), 'facit loggar nya beslut med poäng 0–100');
 await page.screenshot({ path: OUT + 'm-portfolj.png', fullPage: true });
@@ -113,13 +113,13 @@ console.log('PLEJD', (plejd.match(/Analys hämtad[^\n]*/) || [''])[0].slice(0, 3
 await page.goto('http://localhost:8790/#regler'); await page.waitForTimeout(300);
 const reg = await page.innerText('#app');
 T(/Analysmodell/.test(reg) && /Investeringsstil/.test(reg) && /Köp-dippen-spärr/.test(reg), 'modellsektionen finns under Regler');
-T(/Dina regler/.test(reg) && !/Lågt värderad/.test(reg) && /För stor andel/.test(reg), 'regellistan är rensad');
+T(/Dina regler/.test(reg) && !/Lågt värderad/.test(reg) && /Ta hem vinst/.test(reg) && !/För stor andel/.test(reg), 'regellistan är rensad (maxvikt är nu en riskregel)');
 await page.click('details.krit-master summary'); await page.waitForTimeout(200);
 await page.click('details.krit-grupp:nth-of-type(1) summary').catch(() => {});
 await page.screenshot({ path: OUT + 'm-regler.png', fullPage: true });
-const before = await page.evaluate(() => JSON.parse(localStorage.getItem('aktiekompassen-v2')).logg.filter(e => e.d === (d0 => d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0'))(new Date())).map(e => e.t + ':' + e.p).join(' '));
+const before = await page.evaluate(() => JSON.parse(localStorage.getItem('aktiekompassen-v2')).logg.filter(e => e.d === new Date().toISOString().slice(0, 10)).map(e => e.t + ':' + e.p).join(' '));
 await page.click('[data-action=set-stil][data-id=momentum]'); await page.waitForTimeout(300);
-const after = await page.evaluate(() => JSON.parse(localStorage.getItem('aktiekompassen-v2')).logg.filter(e => e.d === (d0 => d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0'))(new Date())).map(e => e.t + ':' + e.p).join(' '));
+const after = await page.evaluate(() => JSON.parse(localStorage.getItem('aktiekompassen-v2')).logg.filter(e => e.d === new Date().toISOString().slice(0, 10)).map(e => e.t + ':' + e.p).join(' '));
 console.log('Balanserad', before); console.log('Momentum  ', after);
 T(before !== after, 'stilbyte ändrar poängen');
 // Ändra en vikt → stil blir Egen

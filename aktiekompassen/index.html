@@ -381,6 +381,32 @@ input.inline { width: 64px; display: inline-block; padding: 4px 6px; margin: 0 4
 .ke-in { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted); }
 .ke-in input { width: 70px; padding: 4px 6px; margin: 0 4px; }
 
+/* Riskregler, tes och säljplan */
+.chip.risk { background: var(--sell-bg); color: var(--sell); border: 1px dashed var(--sell); }
+.sc-verdict .chip.risk { margin-top: 2px; }
+.riskbox { background: var(--surface-2); border-left: 3px solid var(--watch); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+.riskbox.sankt { border-left-color: var(--sell); }
+.riskbox h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.riskbox .lead { margin: 0 0 6px; font-size: 13.5px; }
+.riskbox ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.riskbox li .sub { display: block; font-size: 11.5px; color: var(--muted); }
+.riskbox .hint { margin-top: 6px; }
+.paminnelse { background: var(--buy-bg); border-left: 3px solid var(--buy); border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 13.5px; }
+.paminnelse h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.paminnelse p { margin: 0 0 4px; }
+.paminnelse-notis .btn.link.small { font-weight: 600; }
+.tes-card .field { display: grid; gap: 4px; margin-top: 8px; }
+.tes-card textarea { min-height: 64px; }
+.tes-card .grid2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .tes-card .grid2 { grid-template-columns: 1fr 1fr; } }
+.riskregler { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.riskregler .rr { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
+.riskregler .rr:first-child { border-top: none; padding-top: 0; }
+.riskregler .rr.off { opacity: .6; }
+.rr-in { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted); }
+.rr-in input { width: 70px; padding: 4px 6px; margin: 0 4px; }
+.rr-in select { padding: 4px 6px; max-width: 100%; }
+
 /* Toast */
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; z-index: 20; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
 </style>
@@ -531,7 +557,26 @@ const KRITERIER = [
   { id: 'm_rektr',   dim: 'M', namn: 'Rekommendationstrend 3 mån', falt: 'rek_trend', enhet: 'p.e.', dec: 0, bra: 5, dalig: -10, vikt: 0.75, kalla: 'Rekommendationstrend (Yahoo)', desc: 'Förändring av köpandelen mot för tre månader sedan.' },
 ];
 const KRIT_BY_ID = {}; KRITERIER.forEach(k => { KRIT_BY_ID[k.id] = k; });
-const DEFAULT_MODELL = { stil: 'balanserad', vikter: Object.assign({}, STILAR.balanserad.vikter), troskel: { kop: 70, behall: 50, minska: 35 }, spar: true, sparNiva: 2.5, granser: {}, version: 1 };
+// Riskregler (säljsidan). De kan bara sänka beslutet, aldrig höja det. Åtgärd: 'salj', 'minska' eller 'varna' (visas bara).
+// Stop-lossarna har dessutom läget 'villkorad': Sälj när fundamenta sviktar (kvalitet eller styrka under spärrnivån, eller någon
+// fundamenta-regel slår), annars högst Behåll med varning – så att appen inte säger sälj i ett starkt bolag som bara fallit med marknaden.
+const RISKREGLER = [
+  { id: 'stop_gav',   namn: 'Stop-loss från GAV', kort: 'Stop-loss',                 enhet: '% under GAV',        varde: 20, atgard: 'villkorad', desc: 'Kursen har fallit mer än så här under ditt genomsnittliga anskaffningsvärde.' },
+  { id: 'stop_topp',  namn: 'Glidande stop från högsta kurs', kort: 'Glidande stop',     enhet: '% under toppen',     varde: 20, atgard: 'villkorad', desc: 'Kursen har fallit mer än så här från den högsta stängningskursen sedan du köpte (eller senaste året om köpdatum saknas).' },
+  { id: 'max_vikt',   namn: 'Maxvikt per aktie', kort: 'Maxvikt',                  enhet: '% av portföljen',    varde: 25, atgard: 'minska',    desc: 'Innehavet är en större del av portföljen än så här.' },
+  { id: 'max_valuta', namn: 'Maxvikt per valuta', kort: 'Valutavikt',                 enhet: '% av portföljen',    varde: 50, atgard: 'minska',    desc: 'Alla innehav i samma valuta väger tillsammans mer än så här – det största av dem får rådet.' },
+  { id: 'fscore',     namn: 'F-score faller under', kort: 'F-score',               enhet: 'poäng',              varde: 4,  atgard: 'minska',    desc: 'Piotroski-poängen är lägre än så här (fundamenta försämras).' },
+  { id: 'kvartal',    namn: 'Fallande vinst, kvartal i rad', kort: 'Fallande vinst',      enhet: 'kvartal',            varde: 2,  atgard: 'minska',    desc: 'Vinsten har fallit så här många kvartal i rad.' },
+  { id: 'utd_sankt',  namn: 'Sänkt utdelning', kort: 'Sänkt utdelning',                    enhet: '',                   varde: 1,  atgard: 'minska',    desc: 'Utdelningen för senaste hela året var lägre än året före (eller drogs in).' },
+  { id: 'ma200',      namn: 'Kurs under 200-dagars medelvärde', kort: 'Under MA200',    enhet: '% under MA200',      varde: 0,  atgard: 'varna',     desc: 'Trenden är bruten: kursen ligger under 200-dagars glidande medelvärde (med så här stor marginal).' },
+  { id: 'pe_p90',     namn: 'P/E över egen percentil', kort: 'Dyr mot historik',            enhet: 'percentil',          varde: 90, atgard: 'minska',    desc: 'Dagens P/E ligger över så här hög percentil av bolagets egen 5-årshistorik.' },
+  { id: 'malkurs',    namn: 'Din målkurs nådd', kort: 'Målkurs',                   enhet: '',                   varde: 1,  atgard: 'minska',    desc: 'Kursen har nått målkursen i din säljplan.' },
+  { id: 'stoppkurs',  namn: 'Din stoppkurs nådd', kort: 'Stoppkurs',                 enhet: '',                   varde: 1,  atgard: 'salj',      desc: 'Kursen har fallit under stoppkursen i din säljplan.' },
+];
+const RISK_BY_ID = {}; RISKREGLER.forEach(r => { RISK_BY_ID[r.id] = r; });
+const FUNDAMENTA_REGLER = ['fscore', 'kvartal', 'utd_sankt'];
+const DEFAULT_RISK = {}; RISKREGLER.forEach(r => { DEFAULT_RISK[r.id] = { aktiv: true, varde: r.varde, atgard: r.atgard }; });
+const DEFAULT_MODELL = { stil: 'balanserad', vikter: Object.assign({}, STILAR.balanserad.vikter), troskel: { kop: 70, behall: 50, minska: 35 }, spar: true, sparNiva: 2.5, granser: {}, risk: DEFAULT_RISK, version: 1 };
 const VERDICTS = {
   kop_mer: 'Köp mer', behall: 'Behåll', minska: 'Minska', salj: 'Sälj', kop: 'Köp', avvakta: 'Avvakta', undvik: 'Undvik', bevaka: 'Bevaka', saknas: 'Saknar data',
 };
@@ -570,7 +615,6 @@ const DEFAULT_SETTINGS = {
   rules: [
     { id: 'r4',  metric: 'utv_gav', op: '<',  value: -20, signal: 'kop',  vikt: 1, aktiv: true, namn: 'Öka på nedgång' },
     { id: 'r5',  metric: 'utv_gav', op: '>',  value: 50,  signal: 'salj', vikt: 1, aktiv: true, namn: 'Ta hem vinst' },
-    { id: 'r6',  metric: 'vikt',    op: '>',  value: 25,  signal: 'salj', vikt: 2, aktiv: true, namn: 'För stor andel' },
     { id: 'r10', metric: 'fran52h', op: '<',  value: -25, signal: 'kop',  vikt: 1, aktiv: true, namn: 'Långt under toppen' },
   ],
   kopTroskel: 50,
@@ -660,6 +704,14 @@ function normalizeModell(raw) {
     if ((bra > dalig) !== (k.bra > k.dalig)) return; // riktningen får inte vändas
     m.granser[id] = { bra, dalig };
   });
+  m.risk = clone(DEFAULT_RISK);
+  if (raw.risk && typeof raw.risk === 'object') RISKREGLER.forEach(r => {
+    const x = raw.risk[r.id]; if (!x || typeof x !== 'object') return;
+    m.risk[r.id].aktiv = x.aktiv !== false;
+    m.risk[r.id].varde = numIn(x.varde, 0, 1000, r.varde);
+    if (['salj', 'minska', 'varna', 'villkorad'].indexOf(x.atgard) >= 0 && (x.atgard !== 'villkorad' || r.atgard === 'villkorad')) m.risk[r.id].atgard = x.atgard;
+  });
+  // Den gamla standardregeln "För stor andel" (vikt > 25 % → Sälj) ersätts av riskregeln Maxvikt per aktie.
   return m;
 }
 function normalizeSettings(raw) {
@@ -670,6 +722,8 @@ function normalizeSettings(raw) {
     s.rules = raw.rules.filter(r => r && r.metric).map(normalizeRule);
     // Uppgradering från regelmodellen: standardregler som modellen täcker tas bort om de är orörda.
     if (!raw.modell) s.rules = s.rules.filter(r => { const g = GAMLA_REGLER[r.id]; return !(g && g.metric === r.metric && g.op === r.op && g.value === r.value && g.signal === r.signal); });
+    // Riskreglerna (etapp 3) tar över "För stor andel" (vikt > 25 % → Sälj) om den är orörd.
+    if (!raw.modell || !raw.modell.risk) s.rules = s.rules.filter(r => !(r.id === 'r6' && r.metric === 'vikt' && r.op === '>' && r.value === 25 && r.signal === 'salj'));
   }
   s.kopTroskel = clampInt(raw.kopTroskel, 1, 100, s.kopTroskel);
   s.saljTroskel = clampInt(raw.saljTroskel, 1, 100, s.saljTroskel);
@@ -703,6 +757,12 @@ function normalizeStock(raw, id) {
     las,
     regler: Array.isArray(raw.regler) ? raw.regler.filter(r => r && r.metric).map(normalizeRule) : [],
     anteckning: String(raw.anteckning || ''),
+    // Tes och säljplan (etapp 3): varför äger jag aktien, vad måste hända, när säljer jag. Mål- och stoppkurs blir egna riskregler.
+    tes: String(raw.tes || ''),
+    saljplan: String(raw.saljplan || ''),
+    malkurs: num(raw.malkurs) > 0 ? num(raw.malkurs) : null,
+    stoppkurs: num(raw.stoppkurs) > 0 ? num(raw.stoppkurs) : null,
+    kopDatum: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.kopDatum || '')) ? String(raw.kopDatum) : null,
     transaktioner: Array.isArray(raw.transaktioner) ? raw.transaktioner.filter(t => t && num(t.antal) != null).map(t => ({
       datum: String(t.datum || ''), typ: t.typ === 'salj' ? 'salj' : 'kop', antal: num(t.antal), pris: num(t.pris) == null ? 0 : num(t.pris),
       courtage: num(t.courtage) == null ? 0 : num(t.courtage), resultat: num(t.resultat) })) : [],
@@ -814,12 +874,20 @@ async function hamtaAnalys(s, force) {
     return cur || null;
   }
 }
+// Ett års kurshistorik per ägt innehav, en gång per dag – för glidande stop (högsta sedan köp) och facit.
+async function hamtaHistorik(s) {
+  if (!s.symbol || !(s.antal > 0)) return;
+  const h = state.hist[s.symbol];
+  if (h && h.hamtad && Date.now() - Date.parse(h.hamtad) < 20 * 3600 * 1000 && Array.isArray(h.priser) && h.priser.length > 100) return;
+  try { const r = await api('/historik', { symbol: s.symbol, range: '1y' }); if (r && Array.isArray(r.priser)) { state.hist[s.symbol] = { hamtad: new Date().toISOString(), valuta: r.valuta || null, priser: r.priser }; store.saveHist(); } }
+  catch (e) { /* glidande stop räknas då på 52-veckorshögsta */ }
+}
 let refreshing = false;
 async function refreshStock(id, opts) {
   opts = opts || {};
   const s = stockById(id);
   if (!s || !s.symbol) return;
-  try { const q = await api('/aktie', { symbol: s.symbol }); const cur = stockById(id); if (cur) { applyQuote(cur, q); if (!opts.skipAnalys) await hamtaAnalys(cur, opts.forceAnalys); commitStock(cur); } }
+  try { const q = await api('/aktie', { symbol: s.symbol }); const cur = stockById(id); if (cur) { applyQuote(cur, q); if (!opts.skipAnalys) { await hamtaAnalys(cur, opts.forceAnalys); await hamtaHistorik(cur); } commitStock(cur); } }
   catch (e) { const cur = stockById(id); if (cur) { cur.fel = String(e.message || e); commitStock(cur); } throw e; }
 }
 async function refreshAll(opts) {
@@ -859,8 +927,32 @@ function metricById(id) { return metricDefs().find(m => m.id === id) || null; }
 const sek = (s, amount) => isNum(amount) ? amount * (s.fxSek || 1) : null;
 function ctxFor(stocks) {
   let total = 0, cost = 0;
-  stocks.forEach(s => { if (s.antal > 0 && s.kurs > 0) total += sek(s, s.antal * s.kurs); if (s.antal > 0 && s.gav > 0) cost += sek(s, s.antal * s.gav); });
-  return { total, cost };
+  const valuta = {}, storst = {};
+  stocks.forEach(s => {
+    if (s.antal > 0 && s.kurs > 0) { const v = sek(s, s.antal * s.kurs); total += v; const c = s.valuta || 'SEK'; valuta[c] = (valuta[c] || 0) + v; if (!storst[c] || v > storst[c].v) storst[c] = { id: s.id, v }; }
+    if (s.antal > 0 && s.gav > 0) cost += sek(s, s.antal * s.gav);
+  });
+  return { total, cost, valuta, storst };
+}
+// Högsta stängningskurs sedan köpet (för glidande stop). Köpdatum: angivet, annars första köpet bland affärerna; saknas båda räknas senaste året.
+function kopDatumFor(s) {
+  if (s.kopDatum) return s.kopDatum;
+  const t = s.transaktioner.filter(x => x.typ === 'kop' && /^\d{4}-\d{2}-\d{2}$/.test(x.datum)).map(x => x.datum).sort()[0];
+  return t || null;
+}
+function hogstaSedanKop(s) {
+  const fran = kopDatumFor(s);
+  const h = s.symbol ? state.hist[s.symbol] : null;
+  let hogst = s.kurs > 0 ? s.kurs : null, datum = null, basis = 'dagens kurs';
+  if (h && Array.isArray(h.priser) && h.priser.length) {
+    const start = fran || h.priser[0][0];
+    h.priser.forEach(p => { if (p[0] >= start && p[1] > hogst) { hogst = p[1]; datum = p[0]; } });
+    basis = fran ? 'sedan ' + fmtDate(fran) : 'senaste året';
+  } else {
+    const h52 = isNum(s.varden.hogst52) ? s.varden.hogst52 : null;
+    if (h52 != null && h52 > hogst) { hogst = h52; basis = '52-veckorshögsta'; }
+  }
+  return hogst != null && hogst > 0 ? { hogst, datum, basis, fran: s.kurs > 0 ? (s.kurs / hogst - 1) * 100 : null } : null;
 }
 function metricValue(s, id, ctx) {
   switch (id) {
@@ -1006,7 +1098,8 @@ function bedom(s, ctx) {
   // Egna regler justerar poängen: ±4 per viktsteg. Dippregler kräver godkänd kvalitet och styrka.
   const ev = evaluate(s, ctx);
   const K = dim('K').poang, S = dim('S').poang;
-  const sparOk = !m.spar || (K != null && S != null && K >= m.sparNiva && S >= m.sparNiva);
+  const gateOk = K != null && S != null && K >= m.sparNiva && S >= m.sparNiva; // kvalitet och styrka godkända
+  const sparOk = !m.spar || gateOk;
   let justering = 0;
   const regelSkal = [];
   ev.rows.filter(x => x.status === 'uppfylld').forEach(x => {
@@ -1018,12 +1111,20 @@ function bedom(s, ctx) {
   });
   let score = bas == null ? (regelSkal.some(x => x.d) ? Math.max(0, Math.min(100, 50 + justering)) : null) : Math.max(0, Math.min(100, bas + justering));
   if (score != null) score = Math.round(score);
-  let verdict;
-  if (score == null) verdict = 'saknas';
-  else if (score >= m.troskel.kop) verdict = owned ? 'kop_mer' : 'kop';
-  else if (score >= m.troskel.behall) verdict = owned ? 'behall' : 'avvakta';
-  else if (score >= m.troskel.minska) verdict = owned ? 'minska' : 'undvik';
-  else verdict = owned ? 'salj' : 'undvik';
+  let niva; // 3 köp, 2 behåll, 1 minska, 0 sälj
+  if (score == null) niva = null;
+  else if (score >= m.troskel.kop) niva = 3;
+  else if (score >= m.troskel.behall) niva = 2;
+  else if (score >= m.troskel.minska) niva = 1;
+  else niva = 0;
+  const modellNiva = niva;
+  // Riskkontroll (säljsidan): varje träff kan bara sänka beslutet.
+  const risk = riskKontroll(s, a, ctx, { K, S, gateOk, owned });
+  let riskNiva = null;
+  risk.traffar.forEach(t => { if (t.niva != null) riskNiva = riskNiva == null ? t.niva : Math.min(riskNiva, t.niva); });
+  if (niva != null && riskNiva != null && riskNiva < niva) niva = riskNiva;
+  const nivaTillVerdict = n => n == null ? 'saknas' : owned ? ['salj', 'minska', 'behall', 'kop_mer'][n] : ['undvik', 'undvik', 'avvakta', 'kop'][n];
+  const verdict = nivaTillVerdict(niva);
   // Skäl för och emot: starkaste kriterierna vägda med dimensionens vikt, plus flaggor och regler.
   // Ett kriterium med full poäng och vikt 2 i en dimension med vikt 1 får styrka 1,0; en egen regel på 8 poäng räknas lika starkt.
   const alla = [];
@@ -1031,8 +1132,57 @@ function bedom(s, ctx) {
   regelSkal.forEach(z => { if (z.d) alla.push({ p: z.d > 0 ? 1 : 0, styrka: z.d / 8, text: z.text, sub: 'din regel · ' + fmtSigned(z.d, 0) + ' poäng' }); });
   const skalFor = alla.filter(z => z.p >= 0.75).sort((p, q) => q.styrka - p.styrka);
   const skalEmot = alla.filter(z => z.p <= 0.25).sort((p, q) => p.styrka - q.styrka);
+  // Riskträffar som sänker beslutet läggs först bland skälen emot.
+  risk.traffar.slice().reverse().forEach(t => { if (t.niva != null && modellNiva != null && t.niva < modellNiva) skalEmot.unshift({ p: 0, styrka: -9, text: t.text, sub: 'riskregel · ' + t.atgardText, risk: true }); });
   const flaggor = (a && a.flaggor) || [];
-  return { score, bas: bas == null ? null : Math.round(bas), justering, verdict, dims, skalFor, skalEmot, flaggor, regelSkal, sparOk, typ, a, hamtad: an ? an.hamtad : null, ev, owned, stil: m.stil };
+  return { score, bas: bas == null ? null : Math.round(bas), justering, verdict, modellVerdict: nivaTillVerdict(modellNiva), niva, modellNiva, risk, dims, skalFor, skalEmot, flaggor, regelSkal, sparOk, typ, a, hamtad: an ? an.hamtad : null, ev, owned, stil: m.stil };
+}
+// Riskkontroll: går igenom riskreglerna för en aktie. Returnerar träffar med nivå (0 sälj, 1 minska, 2 högst behåll, null = bara varning).
+function riskKontroll(s, a, ctx, o) {
+  const m = state.settings.modell, R = m.risk, v = analysVarden(s, a);
+  const traffar = [];
+  const fundamentaTraff = [];
+  const atgardText = at => ({ salj: 'Sälj', minska: 'Minska', varna: 'varning', villkorad: 'Sälj om fundamenta sviktar, annars högst Behåll' })[at] || at;
+  const push = (id, text, extra) => {
+    const r = R[id], def = RISK_BY_ID[id];
+    const t = Object.assign({ id, namn: def.namn, text, atgard: r.atgard, atgardText: atgardText(r.atgard), niva: null }, extra || {});
+    if (r.atgard === 'salj') t.niva = 0; else if (r.atgard === 'minska') t.niva = 1;
+    traffar.push(t);
+    if (FUNDAMENTA_REGLER.indexOf(id) >= 0) fundamentaTraff.push(t);
+    return t;
+  };
+  const on = id => R[id] && R[id].aktiv;
+  // Fundamenta
+  if (on('fscore') && isNum(v.fscore) && isNum(v.fscore_av) && v.fscore_av >= 5 && v.fscore / v.fscore_av * 9 < R.fscore.varde) push('fscore', 'F-score ' + v.fscore + ' av ' + v.fscore_av + ' – under ' + R.fscore.varde);
+  if (on('kvartal') && isNum(v.vinst_kvartal_fallande) && v.vinst_kvartal_fallande >= R.kvartal.varde) push('kvartal', 'Vinsten har fallit ' + v.vinst_kvartal_fallande + ' kvartal i rad');
+  if (on('utd_sankt') && v.utd_sankt === true) push('utd_sankt', 'Utdelningen sänktes senaste året');
+  if (on('ma200') && isNum(v.ma200) && v.ma200 > 0 && s.kurs > 0 && (s.kurs / v.ma200 - 1) * 100 < -R.ma200.varde) push('ma200', 'Kursen ligger ' + fmt(Math.abs((s.kurs / v.ma200 - 1) * 100), 1) + ' % under 200-dagars medelvärde');
+  if (on('pe_p90') && isNum(v.pe_percentil) && v.pe_percentil >= R.pe_p90.varde) push('pe_p90', 'P/E i ' + fmt(v.pe_percentil, 0) + ':e percentilen av egen 5-årshistorik');
+  const sviktar = !o.gateOk || fundamentaTraff.length > 0;
+  // Ägda innehav: stop-loss, glidande stop, vikter, egen säljplan
+  let hogsta = null;
+  if (o.owned) {
+    const utv = metricValue(s, 'utv_gav', ctx);
+    if (on('stop_gav') && isNum(utv) && utv <= -R.stop_gav.varde) push('stop_gav', 'Stop-loss: ' + fmtPct(utv, 1, true) + ' mot GAV (gräns −' + fmt(R.stop_gav.varde, 0) + ' %)');
+    hogsta = hogstaSedanKop(s);
+    if (on('stop_topp') && hogsta && isNum(hogsta.fran) && hogsta.fran <= -R.stop_topp.varde && hogsta.hogst > (s.gav || 0)) push('stop_topp', 'Glidande stop: ' + fmtPct(hogsta.fran, 1, true) + ' från högsta ' + fmt(hogsta.hogst, 2) + ' (' + hogsta.basis + ')');
+    const vikt = metricValue(s, 'vikt', ctx);
+    if (on('max_vikt') && isNum(vikt) && vikt > R.max_vikt.varde) push('max_vikt', 'Portföljvikt ' + fmt(vikt, 1) + ' % – över ' + fmt(R.max_vikt.varde, 0) + ' %');
+    const c = s.valuta || 'SEK', cv = ctx.valuta && ctx.valuta[c], andel = cv && ctx.total > 0 ? cv / ctx.total * 100 : null;
+    if (on('max_valuta') && isNum(andel) && andel > R.max_valuta.varde) {
+      const storst = ctx.storst && ctx.storst[c] && ctx.storst[c].id === s.id;
+      if (storst) push('max_valuta', 'Valutan ' + c + ' är ' + fmt(andel, 0) + ' % av portföljen – över ' + fmt(R.max_valuta.varde, 0) + ' % (största innehavet)');
+      else push('max_valuta', 'Valutan ' + c + ' är ' + fmt(andel, 0) + ' % av portföljen – över ' + fmt(R.max_valuta.varde, 0) + ' %', { niva: null, atgard: 'varna', atgardText: 'varning (rådet läggs på det största innehavet)' });
+    }
+    if (on('malkurs') && s.malkurs > 0 && s.kurs >= s.malkurs) push('malkurs', 'Målkursen ' + fmt(s.malkurs, 2) + ' är nådd (' + fmt(s.kurs, 2) + ')');
+    if (on('stoppkurs') && s.stoppkurs > 0 && s.kurs > 0 && s.kurs <= s.stoppkurs) push('stoppkurs', 'Stoppkursen ' + fmt(s.stoppkurs, 2) + ' är nådd (' + fmt(s.kurs, 2) + ')');
+  }
+  // Villkorade stoppar: Sälj när fundamenta sviktar, annars högst Behåll.
+  traffar.forEach(t => { if (t.atgard === 'villkorad') { t.niva = sviktar ? 0 : 2; t.atgardText = sviktar ? 'Sälj – fundamenta sviktar' : 'högst Behåll – kvalitet och styrka håller, öka inte'; } });
+  // Två eller fler fundamenta-signaler samtidigt = Sälj.
+  if (fundamentaTraff.length >= 2) traffar.push({ id: 'fundamenta', namn: 'Flera fundamenta-signaler', text: fundamentaTraff.length + ' fundamenta-signaler samtidigt', atgard: 'salj', atgardText: 'Sälj', niva: 0 });
+  traffar.sort((p, q) => (p.niva == null ? 9 : p.niva) - (q.niva == null ? 9 : q.niva)); // allvarligast först
+  return { traffar, sviktar, hogsta, fundamenta: fundamentaTraff.length };
 }
 function evalAll() { const ctx = ctxFor(state.stocks); return state.stocks.map(s => ({ stock: s, ev: evaluate(s, ctx), b: bedom(s, ctx), ctx })); }
 function allSignals() {
@@ -1178,7 +1328,8 @@ function stockCard(x, ctx) {
         : '<div class="sc-row muted small"><span>' + (isNum(s.forandring) ? 'idag <span class="num ' + cls(s.forandring) + '">' + fmtSigned(s.forandring, 1) + ' %</span> · ' : '') + (ev.triggered.length ? ev.triggered.length + (ev.triggered.length === 1 ? ' egen signal' : ' egna signaler') : 'Inga egna signaler') + '</span></div>') +
       '<div class="sc-skal small muted">' + skal + '</div>' +
     '</div>' +
-    '<div class="sc-verdict">' + dimsHTML(b.dims) + '<span class="score-pill num">' + (b.score == null ? '–' : b.score) + '</span><span class="chip ' + verdictClass(b.verdict) + '">' + verdictLabel(b.verdict, owned) + '</span></div>' +
+    '<div class="sc-verdict">' + dimsHTML(b.dims) + '<span class="score-pill num">' + (b.score == null ? '–' : b.score) + '</span><span class="chip ' + verdictClass(b.verdict) + '">' + verdictLabel(b.verdict, owned) + '</span>' +
+      (b.modellNiva != null && b.niva < b.modellNiva ? '<span class="chip sm risk" title="Riskregel sänkte beslutet">' + esc((RISK_BY_ID[(b.risk.traffar.find(t => t.niva === b.niva) || {}).id] || { kort: 'Risk' }).kort) + '</span>' : '') + '</div>' +
   '</li>';
 }
 
@@ -1202,6 +1353,7 @@ function renderPortfolio() {
       '<div class="tile"><div class="tile-label">Råd · ' + esc(STILAR[state.settings.modell.stil] ? STILAR[state.settings.modell.stil].namn : 'Egen stil') + '</div><div class="tile-value num">' + (snittPoang == null ? '–' : fmt(snittPoang, 0)) + '<span class="tile-unit">/100</span></div><div class="tile-sub"><span class="dot kop"></span>' + kopN + ' köp<span class="dot salj"></span>' + saljN + ' sälj/minska</div></div>' +
     '</section>' +
     (state.uppgraderad ? '<div class="notice"><span>Ny analysmodell: varje aktie bedöms nu i sex dimensioner (värdering, kvalitet, tillväxt, styrka, utdelning, trend) enligt etablerade kriterier. Dina regler finns kvar och justerar poängen; standardregler som modellen täcker togs bort. Stil och gränsvärden ställer du under Regler.</span><button class="btn link" data-action="dismiss-upgrade">Ok</button></div>' : '') +
+    paminnelseNotis(evals) +
     (hasEx ? '<div class="notice"><span>Exempelinnehav: antal och GAV är påhittade, kurser och nyckeltal hämtas på riktigt. Byt ut mot dina egna aktier när du vill.</span><button class="btn link" data-action="clear-examples">Ta bort exempel</button></div>' : '') +
     (errs.length ? '<div class="notice err"><span>Kunde inte hämta: ' + esc(errs.map(s => s.ticker).join(', ')) + ' – ' + esc(errs[0].fel) + '</span><button class="btn link" data-action="refresh-all">Försök igen</button></div>' : '') +
     '<section class="block"><div class="list-head"><h2>Innehav</h2><div class="actions">' +
@@ -1283,7 +1435,15 @@ function renderDetail() {
       (s.regler.length ? '<ul class="rules">' + s.regler.map(r => ruleRow(r, 'aktie')).join('') + '</ul>' : '<p class="hint">Inga egna regler. Här passar t.ex. en målkurs: Kurs &gt; 330 kr → Sälj.</p>') +
       '<p class="hint">De allmänna reglerna under Regler gäller alltid också.</p>' +
     '</section>' +
-    '<section class="card"><h2>Anteckning</h2><textarea id="note-input" data-field="anteckning" placeholder="Varför äger du aktien? Vad ska få dig att sälja?">' + esc(s.anteckning) + '</textarea></section>' +
+    '<section class="card tes-card"><div class="card-head"><h2>Tes och säljplan</h2>' + (owned && hogstaSedanKop(s) ? '<span class="hint num">Högsta sedan köp ' + fmt(hogstaSedanKop(s).hogst, 2) + ' ' + esc(cur) + '</span>' : '') + '</div>' +
+      '<p class="lead">Skriv ner varför du äger aktien, vad som måste hända och när du säljer. Appen påminner om det när beslutet ändras; mål- och stoppkurs blir egna riskregler.</p>' +
+      '<label class="field"><span class="lbl">Tes – varför äger jag den, vad måste hända?</span><textarea data-field="tes" placeholder="T.ex. Marginalerna fortsätter upp när serviceaffären växer; vinsten per aktie ska nå X inom två år.">' + esc(s.tes) + '</textarea></label>' +
+      '<label class="field"><span class="lbl">Säljplan – vid vilken kurs eller händelse säljer jag?</span><textarea data-field="saljplan" placeholder="T.ex. Sälj hälften vid 1 600 p, allt om vinstmarginalen faller två kvartal i rad.">' + esc(s.saljplan) + '</textarea></label>' +
+      '<div class="grid2"><label class="field"><span class="lbl">Målkurs (' + esc(cur) + ')</span><input class="num" inputmode="decimal" data-field="malkurs" value="' + (s.malkurs ? inputVal(s.malkurs, 2) : '') + '" placeholder="valfritt"></label>' +
+        '<label class="field"><span class="lbl">Stoppkurs (' + esc(cur) + ')</span><input class="num" inputmode="decimal" data-field="stoppkurs" value="' + (s.stoppkurs ? inputVal(s.stoppkurs, 2) : '') + '" placeholder="valfritt"></label>' +
+        '<label class="field"><span class="lbl">Köpdatum (för glidande stop)</span><input type="date" data-field="kopDatum" value="' + esc(kopDatumFor(s) || '') + '"></label></div>' +
+      '<label class="field"><span class="lbl">Anteckning</span><textarea id="note-input" data-field="anteckning" placeholder="Övrigt">' + esc(s.anteckning) + '</textarea></label>' +
+    '</section>' +
     (tx.length ? '<section class="card"><h2>Affärer</h2><div class="table-scroll"><table class="tx"><thead><tr><th>Datum</th><th>Typ</th><th class="r">Antal</th><th class="r">Pris</th><th class="r">Belopp</th></tr></thead><tbody>' +
       tx.map(t => '<tr><td>' + esc(fmtDate(t.datum)) + '</td><td><span class="chip sm ' + t.typ + '">' + SIG[t.typ] + '</span></td><td class="num r">' + fmt(t.antal, 0) + '</td><td class="num r">' + fmt(t.pris, 2) + '</td><td class="num r">' + fmt(t.antal * t.pris, 0) + ' ' + esc(cur) +
         (t.typ === 'salj' && isNum(t.resultat) ? '<div class="small ' + cls(t.resultat) + '">' + fmtSigned(t.resultat, 0) + ' ' + esc(cur) + '</div>' : '') + '</td></tr>').join('') +
@@ -1292,6 +1452,14 @@ function renderDetail() {
   '</div>';
 }
 
+// Påminnelse på portföljsidan: ägda aktier vars beslut ändrats de senaste 7 dagarna – läs tesen och säljplanen.
+function paminnelseNotis(evals) {
+  const events = facitEvents();
+  const nyl = [];
+  evals.forEach(x => { if (!(x.stock.antal > 0)) return; const e = events.find(ev => ev.id === x.stock.id && ev.fran); if (e && daysSince(e.d) <= 7 && e.v === x.b.verdict) nyl.push({ s: x.stock, e }); });
+  if (!nyl.length) return '';
+  return '<div class="notice paminnelse-notis"><span><b>Ändrade beslut:</b> ' + nyl.slice(0, 5).map(z => '<button class="btn link small" data-action="open-stock" data-id="' + esc(z.s.id) + '">' + esc(z.s.ticker) + ' ' + esc(verdictLabel(z.e.fran, true)) + ' → ' + esc(verdictLabel(z.e.v, true)) + '</button>').join(', ') + (nyl.length > 5 ? ' m.fl.' : '') + '. Läs din tes och säljplan innan du gör något.</span></div>';
+}
 // Bedömningskortet på aktiens sida: kompass, beslut, skäl för och emot, de sex dimensionerna med kriterier, flaggor och dina regler.
 function renderBedomning(s, b, ctx, checkRows) {
   const owned = s.antal > 0, m = state.settings.modell;
@@ -1318,11 +1486,28 @@ function renderBedomning(s, b, ctx, checkRows) {
       : (s.analysFel ? 'Analysen kunde inte hämtas: ' + esc(s.analysFel) : 'Analysen hämtas vid nästa uppdatering')) + ' · <button class="btn link small" data-action="refresh-analys"' + (refreshing ? ' disabled' : '') + '>Hämta analys igen</button>'
     : 'Ingen automatisk hämtning – bara dina egna regler kan bedömas. <button class="btn link small" data-action="edit-stock">Koppla till Yahoo-symbol</button>';
   const sparText = b.regelSkal.filter(z => z.typ === 'spar');
+  // Riskkontroll: träffar, och om de sänkt beslutet.
+  const sankt = b.modellNiva != null && b.niva != null && b.niva < b.modellNiva;
+  const riskBox = b.risk.traffar.length
+    ? '<div class="riskbox' + (sankt ? ' sankt' : '') + '"><h3>Riskkontroll</h3>' +
+        (sankt ? '<p class="lead">Modellen säger <b>' + verdictLabel(b.modellVerdict, owned) + '</b>, riskreglerna sänker till <b>' + verdictLabel(b.verdict, owned) + '</b>.</p>' : '') +
+        '<ul>' + b.risk.traffar.map(t => '<li><span class="chip sm ' + (t.niva === 0 ? 'salj' : t.niva === 1 ? 'salj' : t.niva === 2 ? 'behall' : 'bevaka') + '">' + esc(t.niva === 0 ? 'Sälj' : t.niva === 1 ? 'Minska' : t.niva === 2 ? 'Högst behåll' : 'Varning') + '</span> ' + esc(t.text) + '<span class="sub">' + esc(t.namn) + ' · ' + esc(t.atgardText) + '</span></li>').join('') + '</ul>' +
+        (b.risk.traffar.some(t => t.atgard === 'villkorad') ? '<p class="hint">Stopparna är villkorade: ' + (b.risk.sviktar ? 'fundamenta sviktar (' + (b.risk.fundamenta ? b.risk.fundamenta + ' fundamenta-signal' + (b.risk.fundamenta > 1 ? 'er' : '') : 'kvalitet eller styrka under spärrnivån') + '), därför Sälj.' : 'kvalitet och styrka håller, därför högst Behåll – öka inte, och läs din tes och säljplan nedan.') + ' Ändra under Regler → Riskregler.</p>' : '') +
+      '</div>'
+    : '';
+  // Påminnelse om tes och säljplan när beslutet nyligen ändrats.
+  const senasteByte = facitEvents().find(e => e.id === s.id && e.fran);
+  const nyligen = senasteByte && daysSince(senasteByte.d) <= 7;
+  const paminnelse = owned && nyligen && (s.tes || s.saljplan)
+    ? '<div class="paminnelse"><h3>Påminnelse</h3><p>Beslutet ändrades ' + esc(fmtDate(senasteByte.d)) + ' från <b>' + verdictLabel(senasteByte.fran, true) + '</b> till <b>' + verdictLabel(senasteByte.v, true) + '</b>. Stämmer din tes fortfarande?</p>' +
+        (s.tes ? '<p><b>Tes:</b> ' + esc(s.tes) + '</p>' : '') + (s.saljplan ? '<p><b>Säljplan:</b> ' + esc(s.saljplan) + '</p>' : '') + '</div>'
+    : (owned && nyligen && !s.tes && !s.saljplan ? '<div class="paminnelse"><h3>Påminnelse</h3><p>Beslutet ändrades ' + esc(fmtDate(senasteByte.d)) + ' från <b>' + verdictLabel(senasteByte.fran, true) + '</b> till <b>' + verdictLabel(senasteByte.v, true) + '</b>. Du har ingen tes eller säljplan för aktien – <button class="btn link small" data-action="edit-tes">skriv ner dem</button> så påminner appen om dem nästa gång.</p></div>' : '');
   return '<section class="card d-verdict">' +
       '<div class="gauge-wrap">' + gaugeSVG(b.score) + '<div class="verdict-label ' + verdictClass(b.verdict) + '">' + verdictLabel(b.verdict, owned) + '</div>' +
-        '<div class="score num">' + (b.score == null ? 'Går inte att bedöma ännu' : 'Poäng ' + b.score + ' av 100 · ' + esc(stilNamn) + (b.justering ? ' · regler ' + fmtSigned(b.justering, 0) : '')) + '</div></div>' +
+        '<div class="score num">' + (b.score == null ? 'Går inte att bedöma ännu' : 'Poäng ' + b.score + ' av 100 · ' + esc(stilNamn) + (b.justering ? ' · regler ' + fmtSigned(b.justering, 0) : '') + (sankt ? ' · modell: ' + verdictLabel(b.modellVerdict, owned) : '')) + '</div></div>' +
       '<div class="verdict-text">' +
         (b.score == null ? '<p class="lead">' + (s.symbol ? 'När analysen är hämtad bedöms aktien i sex dimensioner enligt etablerade kriterier.' : 'Koppla aktien till en Yahoo-symbol så hämtas allt modellen behöver.') + '</p>' : skal) +
+        riskBox + paminnelse +
         (b.flaggor.length ? '<div class="flaggor"><h3>Röda flaggor</h3><ul>' + b.flaggor.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul></div>' : '') +
       '</div>' +
       '<div class="dims-wrap">' + dimRows + '</div>' +
@@ -1429,7 +1614,23 @@ function renderModell() {
       '<label class="check"><input type="checkbox" data-field="modell.spar"' + (m.spar ? ' checked' : '') + '> Köp-dippen-spärr: köpregler på kursnedgång slår bara igenom när Kvalitet och Finansiell styrka är minst <input class="num inline" inputmode="decimal" data-field="modell.sparNiva" value="' + inputVal(m.sparNiva, 1) + '"> av 5</label>' +
       '<details class="krit-master"><summary><span class="dim-name">Kriterier och gränsvärden</span><span class="hint">' + KRITERIER.length + ' kriterier · tryck för att se och ändra</span></summary>' +
         '<p class="hint">Ett kriterium ger full poäng vid "bra"-gränsen eller bättre, noll vid "dålig"-gränsen eller sämre och däremellan en glidande skala. Banker, försäkrings- och investmentbolag bedöms med egna kriterier (P/B, ROE, soliditet på banknivå) och slipper F-score, Z-score och skuldmått.</p>' + kritHtml + '</details>' +
-    '</section>';
+    '</section>' + renderRiskregler();
+}
+function renderRiskregler() {
+  const R = state.settings.modell.risk;
+  const atgarder = r => (r.atgard === 'villkorad' ? [['villkorad', 'Villkorad (Sälj om fundamenta sviktar, annars högst Behåll)'], ['salj', 'Sälj alltid'], ['minska', 'Minska'], ['varna', 'Bara varna']] : [['salj', 'Sälj'], ['minska', 'Minska'], ['varna', 'Bara varna']]);
+  const rows = RISKREGLER.map(r => {
+    const x = R[r.id];
+    const varde = r.id === 'utd_sankt' || r.id === 'malkurs' || r.id === 'stoppkurs' ? '' : '<label class="rr-varde">Gräns <input class="num" inputmode="decimal" data-field="risk.' + r.id + '.varde" value="' + inputVal(x.varde, r.id === 'fscore' || r.id === 'kvartal' ? 0 : 1) + '"> ' + esc(r.enhet) + '</label>';
+    return '<li class="rr' + (x.aktiv ? '' : ' off') + '"><label class="check"><input type="checkbox" data-field="risk.' + r.id + '.aktiv"' + (x.aktiv ? ' checked' : '') + '> <b>' + esc(r.namn) + '</b></label>' +
+      '<div class="hint">' + esc(r.desc) + '</div>' +
+      '<div class="rr-in">' + varde + '<label class="rr-atgard">Åtgärd <select data-field="risk.' + r.id + '.atgard">' + atgarder(r).map(o => '<option value="' + o[0] + '"' + (x.atgard === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></label></div></li>';
+  }).join('');
+  return '<section class="card"><div class="card-head"><h2>Riskregler</h2><button class="btn sm" data-action="reset-risk">Återställ</button></div>' +
+    '<p class="lead">Säljsidan. Riskreglerna kan bara sänka ett beslut, aldrig höja det, och gäller dina ägda innehav (fundamenta- och värderingsreglerna även bevakade). Två fundamenta-signaler samtidigt (F-score, fallande vinst, sänkt utdelning) betyder alltid Sälj. Mål- och stoppkurs sätter du per aktie under Tes och säljplan.</p>' +
+    '<ul class="riskregler">' + rows + '</ul>' +
+    '<p class="hint">"Villkorad" för stopparna: ett bolag som fallit utan att fundamenta försämrats får högst Behåll (öka inte) i stället för Sälj – fundamenta sviktar när Kvalitet eller Finansiell styrka ligger under spärrnivån (' + fmt(state.settings.modell.sparNiva, 1) + ') eller någon fundamenta-regel slår. Vill du ha en hård stop-loss: välj "Sälj alltid".</p>' +
+  '</section>';
 }
 function renderRules() {
   const st = state.settings;
@@ -1460,7 +1661,7 @@ let sheetSubmit = null;
 function openSheet(title, body, submitLabel, onSubmit, opts) {
   opts = opts || {};
   sheet.innerHTML = '<form id="sheetForm" novalidate><div class="sheet-head"><h2>' + esc(title) + '</h2><button type="button" class="btn icon" data-close aria-label="Stäng">✕</button></div>' +
-    '<div class="sheet-body">' + body + '<p class="form-error" id="form-error" hidden></p><div class="sheet-actions"><button type="button" class="btn" data-close>' + (submitLabel ? 'Avbryt' : 'Stäng') + '</button>' +
+    '<div class="sheet-body">' + body + '<p class="form-error" id="form-error" hidden></p><div class="sheet-actions"><button type="button" class="btn" data-close>' + esc(opts.cancelLabel || (submitLabel ? 'Avbryt' : 'Stäng')) + '</button>' +
     (submitLabel ? '<button type="submit" class="btn ' + (opts.danger ? 'danger' : 'primary') + '">' + esc(submitLabel) + '</button>' : '') + '</div></div></form>';
   sheetSubmit = onSubmit;
   if (!sheet.open) sheet.showModal();
@@ -1562,6 +1763,9 @@ function stockForm(stock, q) {
         if (antal > 0 && gav > 0) ns.transaktioner.push({ datum: todayISO(), typ: 'kop', antal, pris: gav, courtage: 0, resultat: null });
         commitStock(ns);
         state.stockId = id; state.view = 'portfolj'; render(); window.scrollTo(0, 0);
+        if (ns.symbol) refreshStock(ns.id).catch(() => {});
+        // Ägd aktie: be om tes och säljplan direkt.
+        if (antal > 0) setTimeout(() => tesSheet(ns.id, true), 350);
       }
       toast('Sparat'); return null;
     });
@@ -1663,6 +1867,7 @@ function tradeForm(stock) {
         const oldA = stock.antal || 0, oldG = stock.gav > 0 ? stock.gav : 0;
         stock.gav = (oldA * oldG + n * p + c) / (oldA + n);
         stock.antal = oldA + n;
+        if (oldA === 0 && !stock.kopDatum) stock.kopDatum = datum; // första köpet – startpunkt för glidande stop
       } else {
         if (n > stock.antal) return 'Du äger bara ' + fmt(stock.antal, 0) + ' st.';
         t.resultat = stock.gav > 0 ? n * (p - stock.gav) - c : null;
@@ -1672,8 +1877,29 @@ function tradeForm(stock) {
       if (!stock.symbol) { stock.kurs = p; stock.kursDatum = datum; }
       commitStock(stock);
       toast(typ === 'kop' ? 'Köp registrerat' : (t.resultat != null ? 'Sälj registrerat · ' + fmtSigned(t.resultat, 0) + ' ' + cur : 'Sälj registrerat'));
+      // Vid köp: be om tes och säljplan om de saknas.
+      if (typ === 'kop' && !stock.tes && !stock.saljplan) setTimeout(() => tesSheet(stock.id, true), 350);
       return null;
     });
+}
+// Tes och säljplan – frågas vid köp och när en ägd aktie läggs till; går alltid att hoppa över.
+function tesSheet(id, nyttKop) {
+  const s = stockById(id); if (!s) return;
+  const cur = s.valuta && s.valuta !== 'SEK' ? s.valuta : 'kr';
+  openSheet((nyttKop ? 'Din tes för ' : 'Tes och säljplan · ') + s.ticker,
+    '<p class="hint">' + (nyttKop ? 'Du har just köpt. Skriv ner varför – då kan appen påminna dig när beslutet ändras. Går att hoppa över.' : 'Appen påminner om tesen och säljplanen när beslutet för aktien ändras.') + '</p>' +
+    field('f-tes', 'Tes – varför äger jag den, vad måste hända?', '<textarea id="f-tes" name="tes" placeholder="T.ex. Orderboken växer, marginalen ska upp mot 20 %.">' + esc(s.tes) + '</textarea>') +
+    field('f-saljplan', 'Säljplan – vid vilken kurs eller händelse säljer jag?', '<textarea id="f-saljplan" name="saljplan" placeholder="T.ex. Sälj hälften vid målkursen, allt om tesen spricker.">' + esc(s.saljplan) + '</textarea>') +
+    '<div class="row2">' + field('f-malkurs', 'Målkurs (' + cur + ', valfritt)', '<input id="f-malkurs" name="malkurs" class="num" inputmode="decimal" value="' + (s.malkurs ? inputVal(s.malkurs, 2) : '') + '">') +
+      field('f-stoppkurs', 'Stoppkurs (' + cur + ', valfritt)', '<input id="f-stoppkurs" name="stoppkurs" class="num" inputmode="decimal" value="' + (s.stoppkurs ? inputVal(s.stoppkurs, 2) : '') + '">') + '</div>',
+    'Spara', fd => {
+      const st = stockById(id); if (!st) return 'Aktien finns inte längre.';
+      const mk = parseNum(fd.get('malkurs')), sk = parseNum(fd.get('stoppkurs'));
+      st.tes = String(fd.get('tes') || '').trim(); st.saljplan = String(fd.get('saljplan') || '').trim();
+      st.malkurs = mk != null && mk > 0 ? mk : null; st.stoppkurs = sk != null && sk > 0 ? sk : null;
+      commitStock(st);
+      return null;
+    }, { cancelLabel: 'Hoppa över' });
 }
 
 function confirmSheet(title, text, label, onYes) {
@@ -1734,6 +1960,8 @@ app.addEventListener('click', e => {
     case 'export': exportJSON(); break;
     case 'import': importForm(); break;
     case 'dismiss-upgrade': state.uppgraderad = false; render(); break;
+    case 'edit-tes': if (s) tesSheet(s.id, false); break;
+    case 'reset-risk': state.settings.modell.risk = clone(DEFAULT_RISK); commitSettings(); toast('Riskreglerna återställda'); break;
     case 'refresh-analys': if (s) { toast('Hämtar analys för ' + s.ticker + '…'); refreshStock(s.id, { forceAnalys: true }).then(() => toast(s.analysFel ? 'Analysen gick inte: ' + s.analysFel : s.ticker + ' analyserad'), err => toast('Gick inte: ' + err.message)); } break;
     case 'set-stil': if (STILAR[id]) { state.settings.modell.stil = id; state.settings.modell.vikter = clone(STILAR[id].vikter); commitSettings(); toast('Stil: ' + STILAR[id].namn); } break;
     case 'reset-grans': delete state.settings.modell.granser[id]; commitSettings(); break;
@@ -1758,11 +1986,26 @@ app.addEventListener('change', e => {
     const def = metricById(id);
     if (def && def.kalla && s.symbol && !s.las[id]) { s.las[id] = true; toast('Eget värde sparat och låst'); }
     commitStock(s);
+  } else if ((f === 'tes' || f === 'saljplan') && s) {
+    s[f] = el.value.trim(); s.updatedAt = new Date().toISOString(); store.save();
+  } else if ((f === 'malkurs' || f === 'stoppkurs') && s) {
+    const v = parseNum(el.value);
+    if (el.value.trim() && (v == null || v <= 0)) { toast('Ange en kurs större än 0'); render(); return; }
+    s[f] = v != null && v > 0 ? v : null; commitStock(s);
+  } else if (f === 'kopDatum' && s) {
+    s.kopDatum = /^\d{4}-\d{2}-\d{2}$/.test(el.value) ? el.value : null; commitStock(s);
   } else if (f === 'anteckning' && s) {
     s.anteckning = el.value; commitStock(s);
   } else if (f === 'settings.kopTroskel' || f === 'settings.saljTroskel') {
     const key = f.split('.')[1], v = parseNum(el.value);
     if (v != null) state.settings[key] = clampInt(v, 1, 100, state.settings[key]);
+    commitSettings();
+  } else if (f.indexOf('risk.') === 0) {
+    const parts = f.split('.'), r = state.settings.modell.risk[parts[1]], def = RISK_BY_ID[parts[1]];
+    if (!r || !def) return;
+    if (parts[2] === 'aktiv') r.aktiv = el.checked;
+    else if (parts[2] === 'varde') { const v = parseNum(el.value); if (v == null || v < 0) { render(); toast('Ange ett tal (0 eller större)'); return; } r.varde = v; }
+    else if (parts[2] === 'atgard') { const a = el.value; if (['salj', 'minska', 'varna', 'villkorad'].indexOf(a) >= 0 && (a !== 'villkorad' || def.atgard === 'villkorad')) r.atgard = a; }
     commitSettings();
   } else if (f.indexOf('modell.') === 0) {
     const m = state.settings.modell, parts = f.split('.'), v = parseNum(el.value);
@@ -1793,7 +2036,7 @@ app.addEventListener('change', e => {
 });
 app.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.matches('input[data-field]')) { e.preventDefault(); e.target.blur(); }
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.stock-card, .signal')) { e.preventDefault(); e.target.click(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.stock-card, .signal, .beslut-rad')) { e.preventDefault(); e.target.click(); }
 });
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   if (t.dataset.view === state.view) { state.stockId = null; render(); }
