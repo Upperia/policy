@@ -599,7 +599,7 @@ const RISKREGLER = [
   { id: 'max_vikt',   namn: 'Maxvikt per aktie', kort: 'Maxvikt',                  enhet: '% av portföljen',    varde: 25, atgard: 'minska',    desc: 'Innehavet är en större del av portföljen än så här.' },
   { id: 'max_valuta', namn: 'Maxvikt per valuta', kort: 'Valutavikt',                 enhet: '% av portföljen',    varde: 50, atgard: 'minska',    desc: 'Alla innehav i samma valuta väger tillsammans mer än så här – det största av dem får rådet.' },
   { id: 'fscore',     namn: 'F-score faller under', kort: 'F-score',               enhet: 'poäng',              varde: 4,  atgard: 'minska',    desc: 'Piotroski-poängen är lägre än så här (fundamenta försämras).' },
-  { id: 'kvartal',    namn: 'Fallande vinst, kvartal i rad', kort: 'Fallande vinst',      enhet: 'kvartal',            varde: 2,  atgard: 'minska',    desc: 'Vinsten har fallit så här många kvartal i rad.' },
+  { id: 'kvartal',    namn: 'Fallande vinst, kvartal i rad', kort: 'Fallande vinst',      enhet: 'kvartal',            varde: 2,  atgard: 'minska',    desc: 'Vinsten har fallit så här många kvartal i rad mot samma kvartal året före. Yahoo ger bara fem kvartal, så regeln slår också när senaste kvartalet är under fjolårets och de senaste tolv månaderna är under senaste bokslutsåret.' },
   { id: 'utd_sankt',  namn: 'Sänkt utdelning', kort: 'Sänkt utdelning',                    enhet: '',                   varde: 1,  atgard: 'minska',    desc: 'Utdelningen för senaste hela året var lägre än året före (eller drogs in).' },
   { id: 'ma200',      namn: 'Kurs under 200-dagars medelvärde', kort: 'Under MA200',    enhet: '% under MA200',      varde: 0,  atgard: 'varna',     desc: 'Trenden är bruten: kursen ligger under 200-dagars glidande medelvärde (med så här stor marginal).' },
   { id: 'pe_p90',     namn: 'P/E över egen percentil', kort: 'Dyr mot historik',            enhet: 'percentil',          varde: 90, atgard: 'minska',    desc: 'Dagens P/E ligger över så här hög percentil av bolagets egen 5-årshistorik.' },
@@ -1195,7 +1195,8 @@ function riskKontroll(s, a, ctx, o) {
   const on = id => R[id] && R[id].aktiv;
   // Fundamenta
   if (on('fscore') && isNum(v.fscore) && isNum(v.fscore_av) && v.fscore_av >= 5 && v.fscore / v.fscore_av * 9 < R.fscore.varde) push('fscore', 'F-score ' + v.fscore + ' av ' + v.fscore_av + ' – under ' + R.fscore.varde);
-  if (on('kvartal') && isNum(v.vinst_kvartal_fallande) && v.vinst_kvartal_fallande >= R.kvartal.varde) push('kvartal', 'Vinsten har fallit ' + v.vinst_kvartal_fallande + ' kvartal i rad');
+  if (on('kvartal') && isNum(v.vinst_kvartal_fallande) && v.vinst_kvartal_fallande >= R.kvartal.varde) push('kvartal', 'Vinsten har fallit ' + v.vinst_kvartal_fallande + ' kvartal i rad mot året före');
+  else if (on('kvartal') && isNum(v.vinst_kvartal_fallande) && v.vinst_kvartal_fallande >= 1 && v.vinst_ttm_fallande === true) push('kvartal', 'Fallande vinst: senaste kvartalet under fjolårets' + (isNum(v.vinst_kvartal_yoy) ? ' (' + fmtSigned(v.vinst_kvartal_yoy, 0) + ' %)' : '') + ' och senaste tolv månaderna under senaste bokslutsåret' + (isNum(v.vinst_ttm_fy) ? ' (' + fmtSigned(v.vinst_ttm_fy, 0) + ' %)' : ''));
   if (on('utd_sankt') && v.utd_sankt === true) push('utd_sankt', 'Utdelningen sänktes senaste året');
   if (on('ma200') && isNum(v.ma200) && v.ma200 > 0 && s.kurs > 0 && (s.kurs / v.ma200 - 1) * 100 < -R.ma200.varde) push('ma200', 'Kursen ligger ' + fmt(Math.abs((s.kurs / v.ma200 - 1) * 100), 1) + ' % under 200-dagars medelvärde');
   if (on('pe_p90') && isNum(v.pe_percentil) && v.pe_percentil >= R.pe_p90.varde) push('pe_p90', 'P/E i ' + fmt(v.pe_percentil, 0) + ':e percentilen av egen 5-årshistorik');

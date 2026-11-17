@@ -174,3 +174,6 @@ const bt = await backtestData(mock as any, 'NVDA');
 assert(bt.priser.length > 200 && bt.vpa.length === 5 && bt.index === '^GSPC' && bt.utd.length > 0, 'backtest-underlag (' + bt.priser.length + ' kurser, ' + bt.vpa.length + ' VPA, ' + bt.utd.length + ' utd)');
 const bti = await backtestData(mock as any, '^GSPC');
 assert(bti.priser.length > 0 && bti.vpa.length === 0 && bti.index === null, 'backtest-underlag för index');
+
+// Fallande vinst: andra tecknet (senaste tolv månaderna mot senaste bokslutsåret)
+assert(typeof a.varden.vinst_ttm_fallande === 'boolean' && (a.varden.vinst_ttm_fy == null || typeof a.varden.vinst_ttm_fy === 'number'), 'vinst_ttm_fallande/vinst_ttm_fy (' + a.varden.vinst_ttm_fallande + ', ' + a.varden.vinst_ttm_fy + ')');

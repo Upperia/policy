@@ -510,6 +510,15 @@ export async function analys(f: FetchFn, symbol: string) {
   }
   const sista = kv.length ? arFore(kv.length - 1) : undefined;
   const kvYoy = sista && sista.v > 0 ? (kv[kv.length - 1].v / sista.v - 1) * 100 : null;
+  // Med bara fem kvartal går det sällan att jämföra mer än ett kvartal mot året före. Som andra tecken på fallande vinst
+  // jämförs därför senaste tolv månaderna med senaste hela bokslutsåret (eller, om de sammanfaller, bokslutsåret med året före).
+  const ttmSerie = S.trailingNetIncome || [], fySerie = S.annualNetIncome || [];
+  let vinstTtmFallande: boolean | null = null, vinstTtmFy: number | null = null;
+  if (ttmSerie.length && fySerie.length) {
+    const ttm = ttmSerie[ttmSerie.length - 1];
+    const ref = fySerie[fySerie.length - 1].d >= ttm.d && fySerie.length > 1 ? fySerie[fySerie.length - 2] : fySerie[fySerie.length - 1];
+    if (ref.d < ttm.d || fySerie.length > 1) { vinstTtmFallande = ttm.v < ref.v; vinstTtmFy = ref.v > 0 ? (ttm.v / ref.v - 1) * 100 : null; }
+  }
   const kvartal = kv.map((p) => { const oms = (S.quarterlyTotalRevenue || []).find((x) => x.d === p.d); return { datum: p.d, vinst: p.v, omsattning: oms ? oms.v : null }; });
   const arSerie = (S.annualTotalRevenue || []).slice(-5).map((p) => {
     const at = (s: Serie | undefined) => { const hit = s && s.find((x) => x.d === p.d); return hit ? hit.v : null; };
@@ -532,6 +541,7 @@ export async function analys(f: FetchFn, symbol: string) {
   if (bruttomarginalNu != null && bruttomarginalFg != null && bruttomarginalNu < bruttomarginalFg - 3) flaggor.push("Bruttomarginalen föll " + (bruttomarginalFg - bruttomarginalNu).toFixed(1) + " procentenheter senaste bokslutet");
   if (insyn.salj6m >= 3 && insyn.kop6m === 0) flaggor.push("Bara insynsförsäljningar senaste halvåret (" + insyn.salj6m + " st)");
   if (fallande != null && fallande >= 2) flaggor.push("Vinsten har fallit " + fallande + " kvartal i rad (mot samma kvartal året före)");
+  else if (fallande != null && fallande >= 1 && vinstTtmFallande) flaggor.push("Fallande vinst: senaste kvartalet under samma kvartal i fjol" + (kvYoy != null ? " (" + kvYoy.toFixed(0) + " %)" : "") + " och senaste tolv månaderna under senaste bokslutsåret" + (vinstTtmFy != null ? " (" + vinstTtmFy.toFixed(0) + " %)" : ""));
   if (utdHist && utdHist.sankt) flaggor.push("Utdelningen sänktes senaste året");
   // Rimlighetskontroll av källdata: vinst per aktie i senaste bokslutet som inte går ihop med kursen tyder på engångspost eller datafel.
   const opalitlig: string[] = []; // delar av underlaget som appen inte ska lita på
@@ -578,7 +588,7 @@ export async function analys(f: FetchFn, symbol: string) {
       riktkurs: analytiker.riktkurs, borsvarde: marketCap != null ? r2(marketCap, 0) : null, vpa: r2(vpa, 2),
       // Riskregler och värdering
       vpa_forward: r2(forwardPE != null && forwardPE > 0 && kurs ? kurs / forwardPE : null, 2),
-      vinst_kvartal_fallande: fallande, vinst_kvartal_yoy: r2(kvYoy, 1), utd_sankt: utdHist ? utdHist.sankt : null,
+      vinst_kvartal_fallande: fallande, vinst_kvartal_yoy: r2(kvYoy, 1), vinst_ttm_fallande: vinstTtmFallande, vinst_ttm_fy: r2(vinstTtmFy, 1), utd_sankt: utdHist ? utdHist.sankt : null,
     },
     kvartal,
     fscore, zscore: r2(zscore, 2), peHistorik: peHist, utdelning, trend, analytiker, insyn, jamfor, bokslut: arSerie, flaggor, saknas, opalitlig,
